@@ -59,6 +59,16 @@ jobs:
           find /opt/homebrew/opt/zstd/lib -name "libzstd*"
           find /opt/homebrew/opt/openssl/lib -name "libssl*"
 
+      - name: Build libarchive static without iconv
+        run: |
+          brew uninstall --ignore-dependencies libarchive || true
+          git clone https://github.com/libarchive/libarchive.git
+          cd libarchive
+          ./build/autogen.sh
+          ./configure --disable-shared --enable-static --without-iconv --prefix=/opt/homebrew/opt/libarchive
+          make -j$(sysctl -n hw.ncpu)
+          make install
+
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 
