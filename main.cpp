@@ -11,7 +11,6 @@
 
 namespace fs = std::filesystem;
 
-// Convert std::filesystem::perms to mode_t
 mode_t permsToMode(fs::perms p) {
     mode_t mode = 0;
     if ((p & fs::perms::owner_read) != fs::perms::none) mode |= S_IRUSR;
@@ -26,19 +25,32 @@ mode_t permsToMode(fs::perms p) {
     return mode;
 }
 
-// Add a file, directory, or symlink to archive
+// Strip \\?\ prefix on Windows for libarchive
+std::string sanitizePathForArchive(const fs::path& p) {
+#ifdef _WIN32
+    std::string s = p.string();
+    if (s.rfind("\\\\?\\", 0) == 0) {
+        s = s.substr(4);
+    }
+    return s;
+#else
+    return p.string();
+#endif
+}
+
+// Add file/dir/symlink to archive
 bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
     archive_entry* entry = archive_entry_new();
     std::string relPath = fs::relative(path, baseDir).string();
-    archive_entry_set_pathname(entry, relPath.c_str());
+    archive_entry_set_pathname(entry, sanitizePathForArchive(relPath).c_str());
 
     auto st = fs::symlink_status(path);
 
     if (fs::is_symlink(path)) {
         fs::path target = fs::read_symlink(path);
         archive_entry_set_filetype(entry, AE_IFLNK);
-        archive_entry_set_perm(entry, 0777); // standard for symlinks
-        archive_entry_set_symlink(entry, target.string().c_str());
+        archive_entry_set_perm(entry, 0777);
+        archive_entry_set_symlink(entry, sanitizePathForArchive(target).c_str());
         archive_write_header(a, entry);
     }
     else if (fs::is_directory(path)) {
@@ -63,20 +75,30 @@ bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
     return true;
 }
 
-// Pack a directory (with symlinks preserved) into tar.gz
 bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
     struct archive* a = archive_write_new();
     archive_write_set_format_pax_restricted(a); // POSIX tar
-    archive_write_add_filter_gzip(a);           // gzip
+    archive_write_add_filter_gzip(a);
 
     if (archive_write_open_filename(a, archivePath.string().c_str()) != ARCHIVE_OK)
         return false;
 
-    // Add root directory
-    addFile(a, dir.parent_path(), dir);
-
-    for (auto& p : fs::recursive_directory_iterator(dir, fs::directory_options::follow_directory_symlink)) {
-        addFile(a, dir.parent_path(), p.path());
+    for (auto& p : fs::recursive_directory_iterator(dir,
+            fs::directory_options::follow_directory_symlink)) {
+        try
+        {
+#ifdef DEBUG
+            std::cout << "addFile: " << dir << " -> " << p.path() << std::endl;
+#endif
+            addFile(a, dir, p.path());
+        }
+        catch(const std::exception& e)
+        {
+#ifdef DEBUG
+            std::cerr << "FAILED: packDirectory: " << dir << std::endl << e.what() << std::endl;
+#endif
+        }
+        
     }
 
     archive_write_close(a);
@@ -84,7 +106,6 @@ bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
     return true;
 }
 
-// Unpack archive, preserving all symlinks (broken or outside)
 bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
     struct archive* a = archive_read_new();
     struct archive* ext = archive_write_disk_new();
@@ -92,7 +113,6 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
     archive_read_support_format_tar(a);
     archive_read_support_filter_gzip(a);
 
-    // Extraction options: preserve all metadata
     archive_write_disk_set_options(ext,
         ARCHIVE_EXTRACT_OWNER |
         ARCHIVE_EXTRACT_PERM |
@@ -111,34 +131,48 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
 
     archive_entry* entry;
     while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-        fs::path fullPath = destDir / archive_entry_pathname(entry);
+        try {
+            std::string relPath = archive_entry_pathname(entry);
 
-        // Ensure parent dirs exist
-        std::error_code ec;
-        fs::create_directories(fullPath.parent_path(), ec);
+#ifdef _WIN32
+            if (relPath.rfind("\\\\?\\", 0) == 0) relPath = relPath.substr(4);
+            if (relPath.size() >= 2 && relPath[1] == ':') relPath = relPath.substr(2);
+            while (!relPath.empty() && (relPath[0] == '\\' || relPath[0] == '/')) relPath.erase(0,1);
+#endif
 
-        archive_entry_set_pathname(entry, fullPath.string().c_str());
+            fs::path fullPath = destDir / relPath;
 
-        // Write header (creates file, dir, or symlink)
-        mode_t old_umask = umask(0);
-        if (archive_write_header(ext, entry) != ARCHIVE_OK) {
-            std::cerr << "Failed to write entry: " << archive_error_string(ext) << "\n";
-            umask(old_umask);
-            continue;
-        }
-        umask(old_umask);
+#ifdef DEBUG
+            std::cout << "unpackArchive: " << relPath << " -> " << fullPath.parent_path() << std::endl;
+#endif
+            std::error_code ec;
+            fs::create_directories(fullPath.parent_path(), ec);
 
-        // Only regular files have data to copy
-        if (archive_entry_filetype(entry) == AE_IFREG) {
-            const void* buff;
-            size_t size;
-            la_int64_t offset;
-            while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK) {
-                archive_write_data_block(ext, buff, size, offset);
+            archive_entry_set_pathname(entry, sanitizePathForArchive(fullPath).c_str());
+
+            mode_t old_umask = umask(0);
+            if (archive_write_header(ext, entry) != ARCHIVE_OK) {
+#ifdef DEBUG
+                std::cerr << "FAILED: archive_write_header: " << archive_error_string(ext) << std::endl;
+#endif
+                umask(old_umask);
+                continue;
             }
-        }
+            umask(old_umask);
 
-        // Symlinks (including broken or outside) and directories handled by archive_write_header
+            if (archive_entry_filetype(entry) == AE_IFREG) {
+                const void* buff;
+                size_t size;
+                la_int64_t offset;
+                while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK) {
+                    archive_write_data_block(ext, buff, size, offset);
+                }
+            }
+        } catch(const std::exception& e) {
+#ifdef DEBUG
+            std::cerr << "FAILED: archive_read_next_header" << std::endl << e.what() << std::endl;
+#endif
+        }
     }
 
     archive_write_close(ext);
@@ -155,24 +189,44 @@ void printHeader() {
               << "Note: This software incorporates libarchive, which is licensed under the BSD" << std::endl << std::endl;
 }
 
-// TODO: Add printouts & error handling
 int main(int argc, char* argv[]) {
     printHeader();
 
     if (argc != 4) {
-        std::cerr << "Usage: pack|unpack <source> <destination>\n";
+        std::cerr << "Usage: pack|unpack <source> <destination>" << std::endl;
         return 1;
     }
+
 
     std::string cmd = argv[1];
     fs::path src = argv[2];
     fs::path dst = argv[3];
 
-    // TODO: fix file name too long:
-    // filesystem error: in canonical: File name too long ["test_cases/case_long_paths/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..."]
-    if (cmd == "pack") return packDirectory(src, dst) ? 0 : 1;
-    if (cmd == "unpack") return unpackArchive(src, dst) ? 0 : 1;
+    std::cout << "CMD: " << cmd << std::endl;
+    std::cout << "SRC: " << src << std::endl;
+    std::cout << "DST: " << dst << std::endl << std::endl;
 
-    std::cerr << "Unknown command: " << cmd << "\n";
+    // Normalize destination
+    dst = fs::absolute(dst);
+
+    if (cmd == "pack") {
+        std::cout << "packing.." << std::endl;
+        return packDirectory(src, dst) ? 0 : 1;
+    }
+
+    if (cmd == "unpack") {
+        if (!fs::exists(dst)) {
+            std::error_code ec;
+            fs::create_directories(dst, ec);
+            if (ec) {
+                std::cerr << "Failed to create destination directory: " << ec.message() << std::endl;
+                return 1;
+            }
+        }
+        std::cout << "unpacking.." << std::endl;
+        return unpackArchive(src, dst) ? 0 : 1;
+    }
+
+    std::cerr << "Unknown command: " << cmd << std::endl;
     return 2;
 }
