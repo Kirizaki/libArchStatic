@@ -18,7 +18,8 @@ jobs:
 
       - name: Setup vcpkg
         run: |
-          git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
+          if (Test-Path C:/vcpkg) { Remove-Item -Recurse -Force C:/vcpkg }
+          git clone --recursive https://github.com/microsoft/vcpkg.git C:/vcpkg
           C:/vcpkg/bootstrap-vcpkg.bat
           C:/vcpkg/vcpkg.exe install bzip2 zlib zstd xz openssl libarchive:x64-windows-static
 
