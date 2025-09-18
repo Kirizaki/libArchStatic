@@ -33,7 +33,7 @@ jobs:
             pacman -S --noconfirm --needed git
           fi
 
-      - name: Debug: Print libarchive paths
+      - name: Debug Print libarchive paths
         shell: bash
         run: |
           echo "=== DEBUG: MSYS2 Library Paths ==="
