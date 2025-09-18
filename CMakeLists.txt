@@ -39,8 +39,7 @@ elseif(APPLE)
     set(OPENSSL_ROOT    $ENV{OPENSSL_ROOT}    CACHE PATH "openssl root path")
 
     target_include_directories(libArchStatic PRIVATE
-        /opt/homebrew/opt/libarchive/include/
-        /opt/homebrew/opt/libarchive/include/archive.h
+        include/archive.h
         /opt/homebrew/opt/zstd/include
         /opt/homebrew/opt/xz/include
         /opt/homebrew/opt/bzip2/include
