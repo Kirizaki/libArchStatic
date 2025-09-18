@@ -13,22 +13,20 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 if(WIN32)
-    # Use vcpkg toolchain: vcpkg automatically sets include/lib paths
-    find_package(libarchive REQUIRED CONFIG)
-    find_package(zstd REQUIRED CONFIG)
-    find_package(bzip2 REQUIRED CONFIG)
-    find_package(xz REQUIRED CONFIG)
-    find_package(ZLIB REQUIRED CONFIG)
-    find_package(OpenSSL REQUIRED CONFIG)
+    set(MSYS2_PREFIX "/c/msys64/mingw64")
+
+    target_include_directories(libArchStatic PRIVATE
+        ${MSYS2_PREFIX}/include
+        ${MSYS2_PREFIX}/include/libarchive
+    )
 
     target_link_libraries(libArchStatic PRIVATE
-        libarchive::libarchive
-        ZSTD::ZSTD
-        BZip2::BZip2
-        XZ::XZ
-        ZLIB::ZLIB
-        OpenSSL::SSL
-        OpenSSL::Crypto
+        ${MSYS2_PREFIX}/lib/libarchive.a
+        ${MSYS2_PREFIX}/lib/libzstd.a
+        ${MSYS2_PREFIX}/lib/liblzma.a
+        ${MSYS2_PREFIX}/lib/libbz2.a
+        ${MSYS2_PREFIX}/lib/libz.a
+        ${MSYS2_PREFIX}/lib/libcrypto.a
     )
 elseif(APPLE)
     set(LIBARCHIVE_ROOT $ENV{LIBARCHIVE_ROOT} CACHE PATH "libarchive root path")
