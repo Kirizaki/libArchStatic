@@ -94,7 +94,9 @@ bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
         }
         catch(const std::exception& e)
         {
+#ifdef DEBUG
             std::cerr << "FAILED: packDirectory: " << dir << std::endl << e.what() << std::endl;
+#endif
         }
         
     }
@@ -150,7 +152,9 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
 
             mode_t old_umask = umask(0);
             if (archive_write_header(ext, entry) != ARCHIVE_OK) {
-                std::cerr << "FAILED: archive_write_header: " << archive_error_string(ext) << "\n";
+#ifdef DEBUG
+                std::cerr << "FAILED: archive_write_header: " << archive_error_string(ext) << std::endl;
+#endif
                 umask(old_umask);
                 continue;
             }
@@ -165,7 +169,9 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
                 }
             }
         } catch(const std::exception& e) {
+#ifdef DEBUG
             std::cerr << "FAILED: archive_read_next_header" << std::endl << e.what() << std::endl;
+#endif
         }
     }
 
@@ -187,7 +193,7 @@ int main(int argc, char* argv[]) {
     printHeader();
 
     if (argc != 4) {
-        std::cerr << "Usage: pack|unpack <source> <destination>\n";
+        std::cerr << "Usage: pack|unpack <source> <destination>" << std::endl;
         return 1;
     }
 
@@ -196,25 +202,31 @@ int main(int argc, char* argv[]) {
     fs::path src = argv[2];
     fs::path dst = argv[3];
 
-    std::cout << cmd << ": " << src << " -> " << dst << std::endl;
-    
+    std::cout << "CMD: " << cmd << std::endl;
+    std::cout << "SRC: " << src << std::endl;
+    std::cout << "DST: " << dst << std::endl << std::endl;
+
     // Normalize destination
     dst = fs::absolute(dst);
 
-    if (cmd == "pack") return packDirectory(src, dst) ? 0 : 1;
+    if (cmd == "pack") {
+        std::cout << "packing.." << std::endl;
+        return packDirectory(src, dst) ? 0 : 1;
+    }
 
     if (cmd == "unpack") {
         if (!fs::exists(dst)) {
             std::error_code ec;
             fs::create_directories(dst, ec);
             if (ec) {
-                std::cerr << "Failed to create destination directory: " << ec.message() << "\n";
+                std::cerr << "Failed to create destination directory: " << ec.message() << std::endl;
                 return 1;
             }
         }
+        std::cout << "unpacking.." << std::endl;
         return unpackArchive(src, dst) ? 0 : 1;
     }
 
-    std::cerr << "Unknown command: " << cmd << "\n";
+    std::cerr << "Unknown command: " << cmd << std::endl;
     return 2;
 }

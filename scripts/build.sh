@@ -1,10 +1,36 @@
 #!/usr/bin/env bash
 set -e
 
-# Remove old build dir
-rm -rf build
-mkdir build
-cd build
+DEBUG=false
+BUILD_TYPE=Release
+CLEAN_BUILD=false
+BUILD_DIR=build
+
+for arg in "$@"; do
+    case $arg in
+        --debug)
+            BUILD_TYPE=Debug
+            shift
+            ;;
+        --clean)
+            CLEAN_BUILD=true
+            shift
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            echo "Usage: ./build.sh [--clean] [--format] [--tidy]"
+            exit 1
+            ;;
+    esac
+done
+
+if [ "$CLEAN_BUILD" = true ]; then
+    echo "Cleaning build folder..."
+    rm -rf "$BUILD_DIR"
+fi
+
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 
 # Detect platform
 UNAME=$(uname | tr '[:upper:]' '[:lower:]')
@@ -34,7 +60,7 @@ else
 fi
 
 echo "Using generator: $CMAKE_GENERATOR"
-cmake -G "$CMAKE_GENERATOR" ..
+cmake -G "$CMAKE_GENERATOR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" ..
 
 echo "Building..."
 $BUILD_CMD

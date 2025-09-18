@@ -8,9 +8,9 @@ add_executable(libArchStatic
   main.cpp
 )
 
-target_compile_definitions(libArchStatic PRIVATE
-    $<$<CONFIG:Debug>:DEBUG>
-)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DDEBUG)
+endif()
 
 # Platform-specific configuration
 if(WIN32)
