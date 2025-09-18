@@ -18,24 +18,32 @@ jobs:
 
       - name: Setup vcpkg
         run: |
-          if (Test-Path C:/vcpkg) { Remove-Item -Recurse -Force C:/vcpkg }
-          git clone --recursive https://github.com/microsoft/vcpkg.git C:/vcpkg
-          C:/vcpkg/bootstrap-vcpkg.bat
-          C:/vcpkg/vcpkg.exe install bzip2 zlib zstd xz openssl libarchive:x64-windows-static
+          set -eux
+
+          # Clone vcpkg only if it doesn't exist
+          if (-Not (Test-Path "C:/vcpkg/vcpkg.exe")) {
+              git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
+              C:/vcpkg/bootstrap-vcpkg.bat
+          }
+
+          # Install required libraries
+          C:/vcpkg/vcpkg.exe install bzip2 zlib zstd xz-utils openssl libarchive:x64-windows-static
+
+          # Show installed paths for debugging
+          C:/vcpkg/vcpkg.exe list
 
       - name: Configure CMake
-        run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
-                -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-                -DBUILD_SHARED_LIBS=OFF
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
+              -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+              -DBUILD_SHARED_LIBS=OFF
 
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release -- -j
 
       - name: Package artifacts
         run: |
           mkdir artifacts
-          copy build\Release\libArchStatic.exe artifacts\
+          copy build\libArchStatic.exe artifacts\
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
