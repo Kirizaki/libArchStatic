@@ -1,4 +1,4 @@
-name: Build libArchStatic (Windows)
+name: Build libArchStatic (Windows MSYS2)
 
 on:
   workflow_dispatch:
@@ -11,39 +11,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Setup MSYS2 and install dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-git
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-bzip2
+            mingw-w64-x86_64-xz
+            mingw-w64-x86_64-zstd
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-libarchive
+
+      - name: Print MSYS2 environment info
+        shell: bash
         run: |
-          choco install cmake --installargs '"ADD_CMAKE_TO_PATH=System"' -y
-          choco install git -y
-
-      - name: Setup vcpkg
-        run: |
-          set -eux
-
-          # Clone vcpkg only if it doesn't exist
-          if (-Not (Test-Path "C:/vcpkg/vcpkg.exe")) {
-              git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
-              C:/vcpkg/bootstrap-vcpkg.bat
-          }
-
-          # Install required libraries
-          C:/vcpkg/vcpkg.exe install bzip2 zlib zstd xz-utils openssl libarchive:x64-windows-static
-
-          # Show installed paths for debugging
-          C:/vcpkg/vcpkg.exe list
+          echo "=== PATH ==="
+          echo $PATH
+          echo "=== Installed libs ==="
+          pacman -Q | grep -E "libarchive|zlib|bzip2|xz|zstd|openssl"
 
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
-              -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-              -DBUILD_SHARED_LIBS=OFF
+        shell: bash
+        run: |
+          export PATH="/c/msys64/mingw64/bin:$PATH"
+          mkdir -p build
+          cmake -S . -B build \
+            -G "MinGW Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF
 
       - name: Build
-        run: cmake --build build --config Release -- -j
+        shell: bash
+        run: |
+          export PATH="/c/msys64/mingw64/bin:$PATH"
+          cmake --build build -- -j$(nproc)
 
       - name: Package artifacts
+        shell: bash
         run: |
-          mkdir artifacts
-          copy build\libArchStatic.exe artifacts\
+          mkdir -p artifacts
+          cp build/libArchStatic.exe artifacts/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
