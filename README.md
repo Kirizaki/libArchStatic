@@ -133,6 +133,6 @@ jobs:
 
 ## License
 
-[Specify your license here, e.g., MIT or Apache 2.0]
+MIT License for libArchStatic
 
 ---
