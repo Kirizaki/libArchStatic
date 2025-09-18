@@ -26,12 +26,23 @@ jobs:
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-libarchive
 
-      - name: Install git separately if missing
+      - name: Install git if missing
         shell: bash
         run: |
           if ! command -v git >/dev/null 2>&1; then
             pacman -S --noconfirm --needed git
           fi
+
+      - name: Debug: Print libarchive paths
+        shell: bash
+        run: |
+          echo "=== DEBUG: MSYS2 Library Paths ==="
+          echo "libarchive include dir:"
+          ls -l /c/msys64/mingw64/include/archive.h || echo "archive.h not found"
+          echo "libarchive lib dir:"
+          ls -l /c/msys64/mingw64/lib/libarchive* || echo "libarchive* not found"
+          echo "Other libraries:"
+          ls -l /c/msys64/mingw64/lib/libz* /c/msys64/mingw64/lib/libbz2* /c/msys64/mingw64/lib/liblzma* /c/msys64/mingw64/lib/libzstd* /c/msys64/mingw64/lib/libcrypto*
 
       - name: Configure CMake
         shell: bash
@@ -41,7 +52,8 @@ jobs:
           cmake -S . -B build \
             -G "MinGW Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_PREFIX_PATH="/c/msys64/mingw64"
 
       - name: Build
         shell: bash
