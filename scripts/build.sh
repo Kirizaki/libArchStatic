@@ -13,12 +13,12 @@ UNAME=$(uname | tr '[:upper:]' '[:lower:]')
 CMAKE_GENERATOR=""
 BUILD_CMD=""
 
-if [ "$UNAME" == "linux" ]; then
+if [[ "$UNAME" == "linux" ]]; then
     CMAKE_GENERATOR="Unix Makefiles"
     BUILD_CMD="make -j$(nproc)"
-elif ["$UNAME" == "darwin" ]; then
+elif [[ "$UNAME" == darwin* ]]; then
     CMAKE_GENERATOR="Unix Makefiles"
-    BUILD_CMD="make -j$(sysctl hw.nproc)"
+    BUILD_CMD="make -j$(sysctl -n hw.ncpu)"
 elif [[ "$UNAME" == msys* || "$UNAME" == mingw* || "$UNAME" == cygwin* ]]; then
     # Windows (MSYS2 / MinGW)
     if command -v cmake &>/dev/null; then
