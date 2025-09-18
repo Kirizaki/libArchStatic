@@ -26,25 +26,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Linux: install dependencies
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake git
+          sudo apt-get install -y build-essential cmake git \
+            libarchive-dev zlib1g-dev libbz2-dev liblzma-dev libssl-dev libzstd-dev
 
+      # macOS: install dependencies from Homebrew (build static)
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install cmake git
+          brew install cmake git libarchive zlib bzip2 xz zstd openssl
+          # Force static linking by building from source
+          brew reinstall --build-from-source libarchive zlib bzip2 xz zstd openssl
 
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install cmake --installargs '"ADD_CMAKE_TO_PATH=System"' -y
-          choco install git -y
-
-      # Optional: setup vcpkg on Windows for static libs
+      # Windows: install vcpkg static libs
       - name: Setup vcpkg (Windows)
         if: matrix.os == 'windows-latest'
         run: |
@@ -52,27 +51,33 @@ jobs:
           C:/vcpkg/bootstrap-vcpkg.bat
           C:/vcpkg/vcpkg.exe install bzip2 zlib zstd xz openssl libarchive:x64-windows-static
 
+      # Configure CMake
       - name: Configure CMake
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DBUILD_SHARED_LIBS=OFF
           else
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-          fi
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 
+      # Build
       - name: Build
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             cmake --build build --config Release -- -j
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            cmake --build build -- -j$(sysctl -n hw.ncpu)
           else
             cmake --build build -- -j$(nproc)
-          fi
 
+      # Package artifacts
       - name: Package artifacts
         run: |
           mkdir -p artifacts
           cp build/libArchStatic${{ matrix.ext }} artifacts/
 
+      # Upload artifact
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
