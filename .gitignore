@@ -1,0 +1,49 @@
+# Build directories
+/build/
+/CMakeFiles/
+/CMakeCache.txt
+/cmake-build-*/
+
+# Executables
+*.exe
+libArchStatic
+
+# Archive outputs
+*.tar.gz
+*.tgz
+*.zip
+*.bin
+
+# MacOS
+.DS_Store
+*.dSYM/
+
+# Linux
+*.so
+*.o
+*.a
+
+# Windows
+*.pdb
+*.obj
+*.lib
+
+# IDE/editor files
+*.vscode/
+*.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Logs
+*.log
+
+# GitHub Actions artifacts
+artifacts/
+
+# Other
+*.PDF
+*.pdf
+test_case*
+*.tar
+*.tar*
+*.gz

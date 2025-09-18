@@ -1,0 +1,62 @@
+name: Build libArchStatic
+
+# Allow manual trigger
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            ext: ""
+          - os: macos-latest
+            runner: macos-latest
+            ext: ""
+          - os: windows-latest
+            runner: windows-latest
+            ext: .exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+
+      - name: Install dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install cmake
+
+      - name: Install dependencies
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release -- -j$(nproc)
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/libArchStatic${{ matrix.ext }} artifacts/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: libArchStatic-${{ matrix.os }}
+          path: artifacts/
