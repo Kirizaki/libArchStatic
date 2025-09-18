@@ -33,15 +33,6 @@ jobs:
             pacman -S --noconfirm --needed git
           fi
 
-
-      - name: Print MSYS2 environment info
-        shell: bash
-        run: |
-          echo "=== PATH ==="
-          echo $PATH
-          echo "=== Installed libs ==="
-          pacman -Q | grep -E "libarchive|zlib|bzip2|xz|zstd|openssl"
-
       - name: Configure CMake
         shell: bash
         run: |
