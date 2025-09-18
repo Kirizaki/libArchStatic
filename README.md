@@ -2,7 +2,7 @@
 
 ## About
 
-`libArchStatic` is a cross-platform C++ tool to **pack and unpack directory trees** into `.tar.gz` archives, preserving:
+`libArchStatic` is a cross-platform (windows & macos) C++ tool to **pack and unpack directory trees** into `.tar.gz` archives, preserving:
 
 - Regular files
 - Directories (nested)
@@ -18,10 +18,11 @@ The repository also includes Python scripts to **generate diverse test cases** a
 | File / Directory             | Description |
 |-------------------------------|------------|
 | `main.cpp`                   | Main C++ implementation of packing/unpacking using `libarchive`. |
-| `scripts/build.sh`                   | Builds the project using CMake. |
-| `scripts/verify_unpack.py`           | Python script that recursively compares two directory trees (files, directories, symlinks). |
-| `scripts/gen_test_dirs.py`           | Python script that generates various test cases including normal files, empty directories, symlinks, permission errors, and large files. |
+| `scripts/build.sh`           | Builds the project using CMake. |
+| `scripts/verify_unpack.py`   | Python script that recursively compares two directory trees (files, directories, symlinks). |
+| `scripts/gen_test_dirs.py`   | Python script that generates various test cases including normal files, empty directories, symlinks, permission errors, and large files. |
 | `CMakeLists.txt`             | CMake build configuration with paths to dependencies (`libarchive`, `zstd`, `bzip2`, `xz`, `zlib`, `openssl`). |
+| `.env`                       | Environment variables with paths to dependencies (`libarchive`, `zstd`, `bzip2`, `xz`, `zlib`, `openssl`) - replace with yours. |
 | `.gitignore`                 | Ignores build artifacts, OS files, editor settings, and packed archives. |
 
 ---
@@ -31,6 +32,15 @@ The repository also includes Python scripts to **generate diverse test cases** a
 Ensure the dependencies (`libarchive`, `zstd`, `xz`, `bzip2`, `zlib`, `openssl`) are installed and their paths configured in `CMakeLists.txt`.  
 
 ```bash
+./build.sh
+```
+
+This will:
+
+1. Run CMake to configure the project.
+3. Build release version of `libArchStatic` executable.
+
+```bash
 ./build.sh --clean --debug
 ```
 
@@ -38,7 +48,9 @@ This will:
 
 1. Remove any previous `build` directory.
 2. Run CMake to configure the project.
-3. Build `libArchStatic` executable.
+3. Build debug version of `libArchStatic` executable.
+
+NOTE: Debug enables additional runtime print-outs.
 
 ---
 
@@ -53,6 +65,15 @@ Use `libArchStatic` to **pack** or **unpack** directories:
 # Unpack an archive
 ./build/libArchStatic unpack <archive.tar.gz> <destination_dir>
 ```
+
+This will:
+
+1. Build the project.
+2. Generate test directories (`gen_test_dirs.py`).
+3. Pack `test_cases` into `test_cases.tar.gz`.
+4. Unpack to `test_cases_unpacked`.
+5. Pack again from unpacked directory to `test_cases_unpacked.tar.gz`.
+6. Verify unpacked contents against the original using `verify_unpack.py`.
 
 ---
 

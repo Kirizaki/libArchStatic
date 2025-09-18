@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+source .env
+
 DEBUG=false
 BUILD_TYPE=Release
 CLEAN_BUILD=false
@@ -18,7 +20,7 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: ./build.sh [--clean] [--format] [--tidy]"
+            echo "Usage: ./build.sh [--clean] [--debug]"
             exit 1
             ;;
     esac
