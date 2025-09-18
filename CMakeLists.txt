@@ -39,21 +39,22 @@ elseif(APPLE)
     set(OPENSSL_ROOT    $ENV{OPENSSL_ROOT}    CACHE PATH "openssl root path")
 
     target_include_directories(libArchStatic PRIVATE
-        /opt/homebrew/opt/libarchive/libarchive
-        ${ZSTD_ROOT}/include
-        ${XZ_ROOT}/include
-        ${BZIP2_ROOT}/include
-        ${ZLIB_ROOT}/include
-        ${OPENSSL_ROOT}/include
+        /opt/homebrew/opt/libarchive/include/
+        /opt/homebrew/opt/libarchive/include/archive.h
+        /opt/homebrew/opt/zstd/include
+        /opt/homebrew/opt/xz/include
+        /opt/homebrew/opt/bzip2/include
+        /opt/homebrew/opt/zlib/include
+        /opt/homebrew/opt/openssl@3/include
     )
 
     target_link_libraries(libArchStatic PRIVATE
         /opt/homebrew/opt/libarchive/lib/libarchive.a
-        ${ZSTD_ROOT}/lib/libzstd.a
-        ${XZ_ROOT}/lib/liblzma.a
-        ${BZIP2_ROOT}/lib/libbz2.a
-        ${ZLIB_ROOT}/lib/libz.a
-        ${OPENSSL_ROOT}/lib/libcrypto.a
+        /opt/homebrew/opt/zstd/lib/libzstd.a
+        /opt/homebrew/opt/xz/lib/liblzma.a
+        /opt/homebrew/opt/bzip2/lib/libbz2.a
+        /opt/homebrew/opt/zlib/lib/libz.a
+        /opt/homebrew/opt/openssl@3/lib/libcrypto.a
     )
 
 elseif(UNIX)
