@@ -66,6 +66,7 @@ jobs:
       - name: Locate libarchive.a and other libs
         run: |
           echo "=== DEBUG: Check for static libs ==="
+          find / | grep libarchive.a
           find /opt/homebrew/opt/libarchive/lib -name "libarchive*"
           find /opt/homebrew/opt/zlib/lib -name "libz*"
           find /opt/homebrew/opt/bzip2/lib -name "libbz2*"
