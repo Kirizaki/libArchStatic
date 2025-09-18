@@ -7,8 +7,45 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#ifdef DEBUG
+    #include <sys/errno.h>
+#endif
 
 namespace fs = std::filesystem;
+
+// RAII wrappers for archive_x pointers
+struct ArchiveWriteDeleter {
+    void operator()(archive* a) const noexcept {
+        if (a) {
+            archive_write_close(a);
+            archive_write_free(a);
+        }
+    }
+};
+
+struct ArchiveReadDeleter {
+    void operator()(archive* a) const noexcept {
+        if (a) {
+            archive_read_close(a);
+            archive_read_free(a);
+        }
+    }
+};
+
+struct ArchiveDiskDeleter {
+    void operator()(archive* a) const noexcept {
+        if (a) {
+            archive_write_close(a);
+            archive_write_free(a);
+        }
+    }
+};
+
+struct ArchiveEntryDeleter {
+    void operator()(archive_entry* e) const noexcept {
+        if(e) archive_entry_free(e);
+    }
+};
 
 mode_t permsToMode(fs::perms p) {
     mode_t mode = 0;
@@ -37,82 +74,112 @@ std::string sanitizePathForArchive(const fs::path& p) {
 #endif
 }
 
-// Add file/dir/symlink to archive
 bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
-    archive_entry* entry = archive_entry_new();
+    std::unique_ptr<archive_entry, ArchiveEntryDeleter> entry(archive_entry_new());
+    if (!entry) {
+        std::cerr << "FAILED: archive_entry_new" << std::endl;
+        return false;
+    }
+
     std::string relPath = fs::relative(path, baseDir).string();
-    archive_entry_set_pathname(entry, sanitizePathForArchive(relPath).c_str());
+    archive_entry_set_pathname(entry.get(), sanitizePathForArchive(relPath).c_str());
 
     auto st = fs::symlink_status(path);
 
+    int r;
+
     if (fs::is_symlink(path)) {
         fs::path target = fs::read_symlink(path);
-        archive_entry_set_filetype(entry, AE_IFLNK);
-        archive_entry_set_perm(entry, 0777);
-        archive_entry_set_symlink(entry, sanitizePathForArchive(target).c_str());
-        archive_write_header(a, entry);
-    }
-    else if (fs::is_directory(path)) {
-        archive_entry_set_filetype(entry, AE_IFDIR);
-        archive_entry_set_perm(entry, permsToMode(st.permissions()));
-        archive_write_header(a, entry);
-    }
-    else if (fs::is_regular_file(path)) {
-        archive_entry_set_filetype(entry, AE_IFREG);
-        archive_entry_set_perm(entry, permsToMode(st.permissions()));
-        archive_entry_set_size(entry, fs::file_size(path));
-        archive_write_header(a, entry);
+        archive_entry_set_filetype(entry.get(), AE_IFLNK);
+        archive_entry_set_perm(entry.get(), 0777);
+        archive_entry_set_symlink(entry.get(), sanitizePathForArchive(target).c_str());
+        r = archive_write_header(a, entry.get());
+        if (r != ARCHIVE_OK) return false;
+
+    } else if (fs::is_directory(path)) {
+        archive_entry_set_filetype(entry.get(), AE_IFDIR);
+        archive_entry_set_perm(entry.get(), permsToMode(st.permissions()));
+        r = archive_write_header(a, entry.get());
+        if (r != ARCHIVE_OK) return false;
+
+    } else if (fs::is_regular_file(path)) {
+        archive_entry_set_filetype(entry.get(), AE_IFREG);
+        archive_entry_set_perm(entry.get(), permsToMode(st.permissions()));
+        archive_entry_set_size(entry.get(), fs::file_size(path));
+
+        r = archive_write_header(a, entry.get());
+        if (r != ARCHIVE_OK) {
+            if (r == ARCHIVE_WARN) {
+                std::cerr << "WARNING: Inappropriate file type or format: " << path << std::endl; 
+#ifdef DEBUG
+                std::cerr << "Error type: " << archive_errno(a) << std::endl;
+#endif
+            } else {
+                std::cerr << "Serious errors that make remaining operations impossible!" << std::endl; 
+                return false;
+            }
+        }
 
         std::ifstream f(path, std::ios::binary);
+        if (!f.is_open()) return false;
+
         char buf[8192];
         while (f.read(buf, sizeof(buf)) || f.gcount() > 0) {
-            archive_write_data(a, buf, f.gcount());
+            if (archive_write_data(a, buf, f.gcount()) < 0) {
+#ifdef DEBUG
+                std::cerr << "FAILED: archive_write_data for " << path << std::endl;
+#endif
+                return false;
+            }
         }
     }
 
-    archive_entry_free(entry);
     return true;
 }
 
 bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
-    struct archive* a = archive_write_new();
-    archive_write_set_format_pax_restricted(a); // POSIX tar
-    archive_write_add_filter_gzip(a);
+    std::unique_ptr<archive, ArchiveWriteDeleter> a(archive_write_new());
+    if (!a) return false;
 
-    if (archive_write_open_filename(a, archivePath.string().c_str()) != ARCHIVE_OK)
+    archive_write_set_format_pax_restricted(a.get()); // POSIX tar
+    archive_write_add_filter_gzip(a.get());
+
+    if (archive_write_open_filename(a.get(), archivePath.string().c_str()) != ARCHIVE_OK) {
+#ifdef DEBUG
+        std::cerr << "FAILED: open archive: " << archive_error_string(a.get()) << std::endl;
+#endif
         return false;
+    }
 
-    for (auto& p : fs::recursive_directory_iterator(dir,
-            fs::directory_options::follow_directory_symlink)) {
-        try
-        {
+    for (auto& p : fs::recursive_directory_iterator(
+             dir, fs::directory_options::follow_directory_symlink)) {
+        try {
 #ifdef DEBUG
             std::cout << "addFile: " << dir << " -> " << p.path() << std::endl;
 #endif
-            addFile(a, dir, p.path());
-        }
-        catch(const std::exception& e)
-        {
+            if (!addFile(a.get(), dir, p.path())) {
+#ifdef DEBUG
+                std::cerr << "FAILED: addFile: " << p.path() << std::endl;
+#endif
+            }
+        } catch (const std::exception& e) {
 #ifdef DEBUG
             std::cerr << "FAILED: packDirectory: " << dir << std::endl << e.what() << std::endl;
 #endif
         }
-        
     }
-
-    archive_write_close(a);
-    archive_write_free(a);
     return true;
 }
 
 bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
-    struct archive* a = archive_read_new();
-    struct archive* ext = archive_write_disk_new();
+    std::unique_ptr<archive, ArchiveReadDeleter> a(archive_read_new());
+    std::unique_ptr<archive, ArchiveDiskDeleter> ext(archive_write_disk_new());
+    if (!a || !ext) return false;
 
-    archive_read_support_format_tar(a);
-    archive_read_support_filter_gzip(a);
+    archive_read_support_format_tar(a.get());
+    archive_read_support_filter_gzip(a.get());
 
-    archive_write_disk_set_options(ext,
+    archive_write_disk_set_options(ext.get(),
         ARCHIVE_EXTRACT_OWNER |
         ARCHIVE_EXTRACT_PERM |
         ARCHIVE_EXTRACT_TIME |
@@ -122,14 +189,17 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
         ARCHIVE_EXTRACT_XATTR |
         ARCHIVE_EXTRACT_SPARSE
     );
+    archive_write_disk_set_standard_lookup(ext.get());
 
-    archive_write_disk_set_standard_lookup(ext);
-
-    if (archive_read_open_filename(a, archivePath.string().c_str(), 10240) != ARCHIVE_OK)
+    if (archive_read_open_filename(a.get(), archivePath.string().c_str(), 10240) != ARCHIVE_OK) {
+#ifdef DEBUG
+        std::cerr << "FAILED: open archive: " << archive_error_string(a.get()) << std::endl;
+#endif
         return false;
+    }
 
     archive_entry* entry;
-    while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+    while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK) {
         try {
             std::string relPath = archive_entry_pathname(entry);
 
@@ -150,34 +220,33 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
             archive_entry_set_pathname(entry, sanitizePathForArchive(fullPath).c_str());
 
             mode_t old_umask = umask(0);
-            if (archive_write_header(ext, entry) != ARCHIVE_OK) {
+            int r = archive_write_header(ext.get(), entry);
+            umask(old_umask);
+            if (r != ARCHIVE_OK) {
 #ifdef DEBUG
-                std::cerr << "FAILED: archive_write_header: " << archive_error_string(ext) << std::endl;
+                std::cerr << "FAILED: archive_write_header: " << archive_error_string(ext.get()) << std::endl;
 #endif
-                umask(old_umask);
                 continue;
             }
-            umask(old_umask);
 
             if (archive_entry_filetype(entry) == AE_IFREG) {
                 const void* buff;
                 size_t size;
                 la_int64_t offset;
-                while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK) {
-                    archive_write_data_block(ext, buff, size, offset);
+                while (archive_read_data_block(a.get(), &buff, &size, &offset) == ARCHIVE_OK) {
+                    archive_write_data_block(ext.get(), buff, size, offset);
                 }
             }
-        } catch(const std::exception& e) {
+
+            // Finish entry to keep libarchive state consistent
+            archive_write_finish_entry(ext.get());
+
+        } catch (const std::exception& e) {
 #ifdef DEBUG
-            std::cerr << "FAILED: archive_read_next_header" << std::endl << e.what() << std::endl;
+            std::cerr << "FAILED: unpackArchive: " << e.what() << std::endl;
 #endif
         }
     }
-
-    archive_write_close(ext);
-    archive_write_free(ext);
-    archive_read_close(a);
-    archive_read_free(a);
     return true;
 }
 
