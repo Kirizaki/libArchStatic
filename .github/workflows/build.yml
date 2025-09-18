@@ -1,6 +1,5 @@
 name: Build libArchStatic
 
-# Allow manual trigger
 on:
   workflow_dispatch:
 
@@ -25,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -56,7 +55,7 @@ jobs:
           cp build/libArchStatic${{ matrix.ext }} artifacts/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: libArchStatic-${{ matrix.os }}
           path: artifacts/
