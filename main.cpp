@@ -1,5 +1,4 @@
-//  libArchStatic
-//  Copyright (c) 2025 Kirizaki
+//  libArchStatic - Copyright (c) 2025 Kirizaki
 //  This file is part of libArchStatic, licensed under the MIT License. 
 //  Note: This software incorporates libarchive, which is licensed under the BSD
 
@@ -183,8 +182,7 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
 }
 
 void printHeader() {
-    std::cout << "libArchStatic" << std::endl
-              << "Copyright (c) 2025 Kirizaki" << std::endl
+    std::cout << "libArchStatic - Copyright (c) 2025 Kirizaki" << std::endl
               << "This file is part of libArchStatic, licensed under the MIT License." << std::endl
               << "Note: This software incorporates libarchive, which is licensed under the BSD" << std::endl << std::endl;
 }
