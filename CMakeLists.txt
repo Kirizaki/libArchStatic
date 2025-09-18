@@ -8,6 +8,10 @@ add_executable(libArchStatic
   main.cpp
 )
 
+target_compile_definitions(libArchStatic PRIVATE
+    $<$<CONFIG:Debug>:DEBUG>
+)
+
 # Platform-specific configuration
 if(WIN32)
     # Find prebuilt static libraries

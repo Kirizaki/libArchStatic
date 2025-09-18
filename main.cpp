@@ -85,7 +85,18 @@ bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
 
     for (auto& p : fs::recursive_directory_iterator(dir,
             fs::directory_options::follow_directory_symlink)) {
-        addFile(a, dir, p.path());  // baseDir = dir, not dir.parent_path()
+        try
+        {
+#ifdef DEBUG
+            std::cout << "addFile: " << dir << " -> " << p.path() << std::endl;
+#endif
+            addFile(a, dir, p.path());
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << "FAILED: packDirectory: " << dir << std::endl << e.what() << std::endl;
+        }
+        
     }
 
     archive_write_close(a);
@@ -118,36 +129,43 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
 
     archive_entry* entry;
     while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-        std::string relPath = archive_entry_pathname(entry);
+        try {
+            std::string relPath = archive_entry_pathname(entry);
 
 #ifdef _WIN32
-        if (relPath.rfind("\\\\?\\", 0) == 0) relPath = relPath.substr(4);
-        if (relPath.size() >= 2 && relPath[1] == ':') relPath = relPath.substr(2);
-        while (!relPath.empty() && (relPath[0] == '\\' || relPath[0] == '/')) relPath.erase(0,1);
+            if (relPath.rfind("\\\\?\\", 0) == 0) relPath = relPath.substr(4);
+            if (relPath.size() >= 2 && relPath[1] == ':') relPath = relPath.substr(2);
+            while (!relPath.empty() && (relPath[0] == '\\' || relPath[0] == '/')) relPath.erase(0,1);
 #endif
 
-        fs::path fullPath = destDir / relPath;
+            fs::path fullPath = destDir / relPath;
 
-        std::error_code ec;
-        fs::create_directories(fullPath.parent_path(), ec);
+#ifdef DEBUG
+            std::cout << "unpackArchive: " << relPath << " -> " << fullPath.parent_path() << std::endl;
+#endif
+            std::error_code ec;
+            fs::create_directories(fullPath.parent_path(), ec);
 
-        archive_entry_set_pathname(entry, sanitizePathForArchive(fullPath).c_str());
+            archive_entry_set_pathname(entry, sanitizePathForArchive(fullPath).c_str());
 
-        mode_t old_umask = umask(0);
-        if (archive_write_header(ext, entry) != ARCHIVE_OK) {
-            std::cerr << "Failed to write entry: " << archive_error_string(ext) << "\n";
-            umask(old_umask);
-            continue;
-        }
-        umask(old_umask);
-
-        if (archive_entry_filetype(entry) == AE_IFREG) {
-            const void* buff;
-            size_t size;
-            la_int64_t offset;
-            while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK) {
-                archive_write_data_block(ext, buff, size, offset);
+            mode_t old_umask = umask(0);
+            if (archive_write_header(ext, entry) != ARCHIVE_OK) {
+                std::cerr << "FAILED: archive_write_header: " << archive_error_string(ext) << "\n";
+                umask(old_umask);
+                continue;
             }
+            umask(old_umask);
+
+            if (archive_entry_filetype(entry) == AE_IFREG) {
+                const void* buff;
+                size_t size;
+                la_int64_t offset;
+                while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK) {
+                    archive_write_data_block(ext, buff, size, offset);
+                }
+            }
+        } catch(const std::exception& e) {
+            std::cerr << "FAILED: archive_read_next_header" << std::endl << e.what() << std::endl;
         }
     }
 
@@ -173,10 +191,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+
     std::string cmd = argv[1];
     fs::path src = argv[2];
     fs::path dst = argv[3];
 
+    std::cout << cmd << ": " << src << " -> " << dst << std::endl;
+    
     // Normalize destination
     dst = fs::absolute(dst);
 
