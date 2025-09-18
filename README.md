@@ -27,33 +27,65 @@ The repository also includes Python scripts to **generate diverse test cases** a
 
 ---
 
-## Building
+## Building - windows
+
+Install (MSYS2)[https://www.msys2.org] for MinGW64 and update:
+
+Update MSYS2:
+```
+# in MSYS2 shell
+pacman -Syu
+# then reopen MSYS2 mingw64 shell and run:
+pacman -Syu
+```
+
+NOTE: May need Administrator privileges.
+
+Install all dependencies:
+```
+pacman -S mingw-w64-x86_64-libarchive-static \
+       mingw-w64-x86_64-zlib-static \
+       mingw-w64-x86_64-bzip2-static \
+       mingw-w64-x86_64-xz-static \
+       mingw-w64-x86_64-zstd-static \
+       mingw-w64-x86_64-openssl-static
+```
+
+Go to root dir of this repo and build:
+```
+./scripts/build.sh
+```
+
+Clean build and debug version:
+
+```bash
+./build.sh --clean --debug
+```
+
+**NOTE**: Some lib dirs may require adjustment in `CMakeLists.txt` to your environment.
+
+## Building - macos
 
 Ensure the dependencies (`libarchive`, `zstd`, `xz`, `bzip2`, `zlib`, `openssl`) are installed and their paths configured in `CMakeLists.txt`.
 
 **IMPORTANT**: All libraries should be build from sources for **static linking**.
 **IMPORTANT**: `libarchive` must be build without `libiconv` for static linking.
 
+Build from root of this repo:
+
 ```bash
-./build.sh
+./scripts/build.sh
 ```
 
-This will:
-
-1. Run CMake to configure the project.
-3. Build release version of `libArchStatic` executable.
+Clean build and debug version:
 
 ```bash
 ./build.sh --clean --debug
 ```
 
-This will:
-
-1. Remove any previous `build` directory.
-2. Run CMake to configure the project.
-3. Build debug version of `libArchStatic` executable.
-
 NOTE: Debug enables additional runtime print-outs.
+
+**NOTE**: Some lib dirs may require adjustment in `CMakeLists.txt` to your environment.
 
 ---
 
