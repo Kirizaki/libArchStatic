@@ -38,11 +38,11 @@ jobs:
         run: |
           echo "=== DEBUG: MSYS2 Library Paths ==="
           echo "libarchive include dir:"
-          ls -l /c/msys64/mingw64/include/archive.h || echo "archive.h not found"
+          ls -l /mingw64/include/archive.h || echo "archive.h not found"
           echo "libarchive lib dir:"
-          ls -l /c/msys64/mingw64/lib/libarchive* || echo "libarchive* not found"
+          ls -l /mingw64/lib/libarchive* || echo "libarchive* not found"
           echo "Other libraries:"
-          ls -l /c/msys64/mingw64/lib/libz* /c/msys64/mingw64/lib/libbz2* /c/msys64/mingw64/lib/liblzma* /c/msys64/mingw64/lib/libzstd* /c/msys64/mingw64/lib/libcrypto*
+          ls -l /mingw64/lib/libz* /mingw64/lib/libbz2* /mingw64/lib/liblzma* /mingw64/lib/libzstd* /mingw64/lib/libcrypto*
 
       - name: Configure CMake
         shell: bash
