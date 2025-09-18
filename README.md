@@ -29,7 +29,10 @@ The repository also includes Python scripts to **generate diverse test cases** a
 
 ## Building
 
-Ensure the dependencies (`libarchive`, `zstd`, `xz`, `bzip2`, `zlib`, `openssl`) are installed and their paths configured in `CMakeLists.txt`.  
+Ensure the dependencies (`libarchive`, `zstd`, `xz`, `bzip2`, `zlib`, `openssl`) are installed and their paths configured in `CMakeLists.txt`.
+
+**IMPORTANT**: All libraries should be build from sources for **static linking**.
+**IMPORTANT**: `libarchive` must be build without `libiconv` for static linking.
 
 ```bash
 ./build.sh
