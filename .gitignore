@@ -40,13 +40,11 @@ libArchStatic
 # GitHub Actions artifacts
 artifacts/
 
-# Other
+# Markdown artifacts
 *.PDF
 *.pdf
-test_case*
-*.tar
-*.tar*
-*.gz
+test_cases*
+*.html
 
 # VS
 .vs
