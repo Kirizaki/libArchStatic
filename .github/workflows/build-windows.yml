@@ -23,17 +23,18 @@ jobs:
           C:/vcpkg/vcpkg.exe install bzip2 zlib zstd xz openssl libarchive:x64-windows-static
 
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
-              -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-              -DBUILD_SHARED_LIBS=OFF
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
+                -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+                -DBUILD_SHARED_LIBS=OFF
 
       - name: Build
-        run: cmake --build build --config Release -- -j
+        run: cmake --build build --config Release
 
       - name: Package artifacts
         run: |
           mkdir artifacts
-          copy build\libArchStatic.exe artifacts\
+          copy build\Release\libArchStatic.exe artifacts\
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
