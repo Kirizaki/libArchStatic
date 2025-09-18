@@ -7,6 +7,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#ifdef DEBUG
+    #include <sys/errno.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -73,7 +76,10 @@ std::string sanitizePathForArchive(const fs::path& p) {
 
 bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
     std::unique_ptr<archive_entry, ArchiveEntryDeleter> entry(archive_entry_new());
-    if (!entry) return false;
+    if (!entry) {
+        std::cerr << "FAILED: archive_entry_new" << std::endl;
+        return false;
+    }
 
     std::string relPath = fs::relative(path, baseDir).string();
     archive_entry_set_pathname(entry.get(), sanitizePathForArchive(relPath).c_str());
@@ -102,7 +108,17 @@ bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
         archive_entry_set_size(entry.get(), fs::file_size(path));
 
         r = archive_write_header(a, entry.get());
-        if (r != ARCHIVE_OK) return false;
+        if (r != ARCHIVE_OK) {
+            if (r == ARCHIVE_WARN) {
+                std::cerr << "WARNING: Inappropriate file type or format: " << path << std::endl; 
+#ifdef DEBUG
+                std::cerr << "Error type: " << archive_errno(a) << std::endl;
+#endif
+            } else {
+                std::cerr << "Serious errors that make remaining operations impossible!" << std::endl; 
+                return false;
+            }
+        }
 
         std::ifstream f(path, std::ios::binary);
         if (!f.is_open()) return false;
