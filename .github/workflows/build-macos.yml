@@ -15,24 +15,69 @@ jobs:
         run: |
           brew update
           
-          # Install required packages if missing; skip reinstall to avoid conflicts
-          brew list cmake || brew install cmake
-          brew list git || brew install git
-          brew list libarchive || brew install libarchive
-          brew list zlib || brew install zlib
-          brew list bzip2 || brew install bzip2
-          brew list xz || brew install xz
-          brew list zstd || brew install zstd
-          brew list openssl || brew install openssl
+          for pkg in cmake git libarchive zlib bzip2 xz zstd openssl; do
+              brew list "$pkg" || brew install "$pkg"
+          done
 
-          # Set environment variables for keg-only packages (libarchive, zlib, bzip2, xz, zstd, openssl)
+          # Print paths for debugging
+          echo "=== DEBUG: Homebrew installed paths ==="
+          for pkg in libarchive zlib bzip2 xz zstd openssl; do
+              echo "$pkg:"
+              brew --prefix $pkg
+              ls -l $(brew --prefix $pkg)/lib
+              ls -l $(brew --prefix $pkg)/include
+          done
+
+          # Set environment variables for keg-only packages
           export PATH="/opt/homebrew/opt/libarchive/bin:$PATH"
-          export LDFLAGS="-L/opt/homebrew/opt/libarchive/lib -L/opt/homebrew/opt/zlib/lib -L/opt/homebrew/opt/bzip2/lib -L/opt/homebrew/opt/xz/lib -L/opt/homebrew/opt/zstd/lib -L/opt/homebrew/opt/openssl/lib"
-          export CPPFLAGS="-I/opt/homebrew/opt/libarchive/include -I/opt/homebrew/opt/zlib/include -I/opt/homebrew/opt/bzip2/include -I/opt/homebrew/opt/xz/include -I/opt/homebrew/opt/zstd/include -I/opt/homebrew/opt/openssl/include"
-          export PKG_CONFIG_PATH="/opt/homebrew/opt/libarchive/lib/pkgconfig:/opt/homebrew/opt/zlib/lib/pkgconfig:/opt/homebrew/opt/bzip2/lib/pkgconfig:/opt/homebrew/opt/xz/lib/pkgconfig:/opt/homebrew/opt/zstd/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig"
+          export LIBARCHIVE_ROOT=/opt/homebrew/opt/libarchive
+          export ZSTD_ROOT=/opt/homebrew/opt/zstd
+          export XZ_ROOT=/opt/homebrew/opt/xz
+          export BZIP2_ROOT=/opt/homebrew/opt/bzip2
+          export ZLIB_ROOT=/opt/homebrew/opt/zlib
+          export OPENSSL_ROOT=/opt/homebrew/opt/openssl@3
+
+          export LDFLAGS="-L/opt/homebrew/opt/libarchive/lib \
+-L/opt/homebrew/opt/zlib/lib \
+-L/opt/homebrew/opt/bzip2/lib \
+-L/opt/homebrew/opt/xz/lib \
+-L/opt/homebrew/opt/zstd/lib \
+-L/opt/homebrew/opt/openssl/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/libarchive/include \
+-I/opt/homebrew/opt/zlib/include \
+-I/opt/homebrew/opt/bzip2/include \
+-I/opt/homebrew/opt/xz/include \
+-I/opt/homebrew/opt/zstd/include \
+-I/opt/homebrew/opt/openssl/include"
+          export PKG_CONFIG_PATH="/opt/homebrew/opt/libarchive/lib/pkgconfig:\
+/opt/homebrew/opt/zlib/lib/pkgconfig:\
+/opt/homebrew/opt/bzip2/lib/pkgconfig:\
+/opt/homebrew/opt/xz/lib/pkgconfig:\
+/opt/homebrew/opt/zstd/lib/pkgconfig:\
+/opt/homebrew/opt/openssl/lib/pkgconfig"
+
+          # Show environment variables for debugging
+          echo "=== DEBUG: Environment variables ==="
+          echo "PATH=$PATH"
+          echo "LDFLAGS=$LDFLAGS"
+          echo "CPPFLAGS=$CPPFLAGS"
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+
+      - name: Locate libarchive.a and other libs
+        run: |
+          echo "=== DEBUG: Check for static libs ==="
+          find /opt/homebrew/opt/libarchive/lib -name "libarchive*"
+          find /opt/homebrew/opt/zlib/lib -name "libz*"
+          find /opt/homebrew/opt/bzip2/lib -name "libbz2*"
+          find /opt/homebrew/opt/xz/lib -name "liblzma*"
+          find /opt/homebrew/opt/zstd/lib -name "libzstd*"
+          find /opt/homebrew/opt/openssl/lib -name "libssl*"
 
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+
+      - name: Print CMake cache
+        run: cat build/CMakeCache.txt || echo "CMakeCache.txt not found yet"
 
       - name: Build
         run: cmake --build build -- -j$(sysctl -n hw.ncpu)
