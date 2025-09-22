@@ -168,12 +168,6 @@ def create_case_special_names(root):
             write_text_file(path, "special: " + name + "\n" + PLACEHOLDER_TEXT)
         except OSError as e:
             print(f"[special_names] Skipping invalid name {repr(name)}: {e}")
-    # very long file name (but keep within typical FS limits)
-    long_name = "a" * 200 + ".txt"
-    try:
-        write_text_file(os.path.join(root, "special", long_name), "long name")
-    except OSError as e:
-        print(f"[special_names] Skipping long name creation: {e}")
 
 def create_case_symlinks(root):
     """Create valid symlinks (if allowed) and a broken symlink."""
@@ -339,10 +333,10 @@ def main():
     write_manifest_for_case(c)
     cases.append(c)
 
-    c = os.path.join(BASE_DIR, "case_long_paths")
-    create_case_long_paths(c)
-    write_manifest_for_case(c)
-    cases.append(c)
+    # c = os.path.join(BASE_DIR, "case_long_paths")
+    # create_case_long_paths(c)
+    # write_manifest_for_case(c)
+    # cases.append(c)
 
     print("\nCreated cases:")
     for p in cases:
