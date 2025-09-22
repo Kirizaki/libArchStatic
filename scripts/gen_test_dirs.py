@@ -32,7 +32,7 @@ DEFAULT_RANDOM_SEED = 1337
 # Sizes in bytes
 SMALL_TEXT_SIZE = 256
 SMALL_BINARY_SIZE = 512
-LARGE_FILE_SIZE = 10 * 1024 * 1024 * 250    # 250 MB default for large-file simulation (use sparse to avoid disk use)
+LARGE_FILE_SIZE = 10 * 1024 * 1024 * 250    # 2.5~GB default for large-file simulation (use sparse to avoid disk use)
 SPARSE_LARGE_FILE = True                    # if True, create sparse large file (low actual disk usage when filesystem supports it)
 
 # Stress / scaling

@@ -74,7 +74,22 @@ std::string sanitizePathForArchive(const fs::path& p) {
 #endif
 }
 
+/*
+    Adds new entries to currently created/opened archive.
+    Each entry (symlink|dir|file) handles as follows:
+    - create instance of 'archive_entry'
+    - read permissions 'filesystem::symlink_status': https://en.cppreference.com/w/cpp/filesystem/status.html
+    - setup entry and write header
+      (NOTE: For symlinks sets super wide permissions, as the target file's permissions are the only the importatant)
+    - (AE_IFREG):
+        - open file
+        - stream data file->archive with chunks in 8 KiBiByTe(s) :3
+          NOTE: Configure to specific applications (if bigger files -> bigger chunks -> lower count of sys calls!)
+    TODO: Could re-use archive_entry object by entry->archive_entry_clear().
+*/
 bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
+    // creates new archive_entry which actually holds 'aest' -> Archive Entry Stats,
+    // which holds wider fields due to some OS's diffs: libarchive/libarchive/archive_entry_private.h
     std::unique_ptr<archive_entry, ArchiveEntryDeleter> entry(archive_entry_new());
     if (!entry) {
         std::cerr << "FAILED: archive_entry_new" << std::endl;
@@ -138,25 +153,38 @@ bool addFile(struct archive* a, const fs::path& baseDir, const fs::path& path) {
 }
 
 bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
+    // try to get new pointer to 'archive_write' struct:
+    // libarchive/libarchive/archive_write_private.h
+    // which actually containes 'archive' struct with 'archive_vtable' with "real" behaviours/methods ;)
     std::unique_ptr<archive, ArchiveWriteDeleter> a(archive_write_new());
     if (!a) return false;
 
-    archive_write_set_format_pax_restricted(a.get()); // POSIX tar
+    // sets POSIX tar format: libarchive/libarchive/archive_write_set_format_pax.c
+    // structued Tape Archive concatenation
+    archive_write_set_format_pax_restricted(a.get());
+    // adds compression (default ZLIB / level 6?): libarchive/libarchive/archive_write_add_filter_gzip.c
+    // A level 1 compression might offer the fastest processing but the largest file size.
+    // A level 9 compression prioritizes the smallest file size at the expense of processing speed.
+    // wiki: https://www.ibm.com/docs/en/linux-on-systems?topic=izdc-compression-levels
     archive_write_add_filter_gzip(a.get());
 
     if (archive_write_open_filename(a.get(), archivePath.string().c_str()) != ARCHIVE_OK) {
 #ifdef DEBUG
-        std::cerr << "FAILED: open archive: " << archive_error_string(a.get()) << std::endl;
+        std::cerr << "FAILED: archive_write_open_filename: " << archive_error_string(a.get()) << std::endl;
 #endif
         return false;
     }
 
+    // iterate recursively
+    // TODO: Should check against symlinks loop
+    //       by collecting symlink dirs (visited) and visit only !visited
     for (auto& p : fs::recursive_directory_iterator(
              dir, fs::directory_options::follow_directory_symlink)) {
         try {
 #ifdef DEBUG
             std::cout << "addFile: " << dir << " -> " << p.path() << std::endl;
 #endif
+            // 
             if (!addFile(a.get(), dir, p.path())) {
 #ifdef DEBUG
                 std::cerr << "FAILED: addFile: " << p.path() << std::endl;
@@ -172,38 +200,56 @@ bool packDirectory(const fs::path& dir, const fs::path& archivePath) {
 }
 
 bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
+    // try to get new pointer to 'archive':
+    // libarchive/libarchive/archive_read_private.h
     std::unique_ptr<archive, ArchiveReadDeleter> a(archive_read_new());
+    // ..and new directory writer:
+    // libarchive/libarchive/archive_write_disk_posix.c
     std::unique_ptr<archive, ArchiveDiskDeleter> ext(archive_write_disk_new());
     if (!a || !ext) return false;
 
+    // set that we expect Tape Archive (TAR) format (see: packArchive)
     archive_read_support_format_tar(a.get());
+    // and of course GZIP for compression
+    // NOTE: Should be in-sync with format & compression type packArchive<->unpackArchive!
     archive_read_support_filter_gzip(a.get());
 
+    // sets flags to archive about what exactly we want to restore from metadata
     archive_write_disk_set_options(ext.get(),
-        ARCHIVE_EXTRACT_OWNER |
-        ARCHIVE_EXTRACT_PERM |
-        ARCHIVE_EXTRACT_TIME |
-        ARCHIVE_EXTRACT_FFLAGS |
-        ARCHIVE_EXTRACT_ACL |
-        ARCHIVE_EXTRACT_UNLINK |
-        ARCHIVE_EXTRACT_XATTR |
-        ARCHIVE_EXTRACT_SPARSE
+        ARCHIVE_EXTRACT_OWNER |   // Set file owner/group to match archive
+        ARCHIVE_EXTRACT_PERM |    // Set file permissions to match archive
+        ARCHIVE_EXTRACT_TIME |    // Preserve modification/access times
+        ARCHIVE_EXTRACT_FFLAGS |  // Preserve special file flags (e.g., immutable)
+        ARCHIVE_EXTRACT_ACL |     // Preserve access control lists (extended permissions)
+        ARCHIVE_EXTRACT_UNLINK |  // Delete existing files before extracting
+        ARCHIVE_EXTRACT_XATTR |   // Preserve extended attributes (like user.comment or security.selinux.)
+        ARCHIVE_EXTRACT_SPARSE    // Handle sparse files efficiently (Sparse: [non-zero] 0...0 [non-zero])
     );
+    // and set system standard method to look up those mentioned
+    // libarchive/libarchive/archive_write_disk_set_standard_lookup.c
     archive_write_disk_set_standard_lookup(ext.get());
 
+    // read archive in chunk o 10 KiBiBytes :3 -> why 10 KiB? just arbitrary..
+    // NOTE: Configure to specific applications (if bigger files -> bigger chunks -> lower count of sys calls!)
     if (archive_read_open_filename(a.get(), archivePath.string().c_str(), 10240) != ARCHIVE_OK) {
 #ifdef DEBUG
-        std::cerr << "FAILED: open archive: " << archive_error_string(a.get()) << std::endl;
+        std::cerr << "FAILED: archive_read_open_filename: " << archive_error_string(a.get()) << std::endl;
 #endif
         return false;
     }
 
     archive_entry* entry;
+    // iterate each entry in archive
+    // NOTE: Calling vtable foo ptr: libarchive/libarchive/archive_read.c
     while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK) {
         try {
+            // let's say encoding-wise "safe" read of path as it tries different encodings:
+            // libarchive/libarchive/archive_entry.c
+            // NOTE: For encoding strict application, this should be done explicitly!
             std::string relPath = archive_entry_pathname(entry);
 
 #ifdef _WIN32
+            // ehh.. this windows (MinGW)
             if (relPath.rfind("\\\\?\\", 0) == 0) relPath = relPath.substr(4);
             if (relPath.size() >= 2 && relPath[1] == ':') relPath = relPath.substr(2);
             while (!relPath.empty() && (relPath[0] == '\\' || relPath[0] == '/')) relPath.erase(0,1);
@@ -215,12 +261,20 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
             std::cout << "unpackArchive: " << relPath << " -> " << fullPath.parent_path() << std::endl;
 #endif
             std::error_code ec;
+            // creates dir as if by POSIX mkdir, but base (destDir) dir MUST EXISTS!
             fs::create_directories(fullPath.parent_path(), ec);
 
+            // NOTE: For encoding strict application, this should be done explicitly!
             archive_entry_set_pathname(entry, sanitizePathForArchive(fullPath).c_str());
 
+            // creator-permission-magic:
+            // 1) clear umask, to preserve ONLY those from entry we set in packing:
+            //    per entry: addFile -> archive_entry_set_perm
+            // tldr; prevents current process pollution
             mode_t old_umask = umask(0);
+            // 2) writes header :)
             int r = archive_write_header(ext.get(), entry);
+            // 3) revert umask
             umask(old_umask);
             if (r != ARCHIVE_OK) {
 #ifdef DEBUG
@@ -229,16 +283,19 @@ bool unpackArchive(const fs::path& archivePath, const fs::path& destDir) {
                 continue;
             }
 
+            // and on file 
             if (archive_entry_filetype(entry) == AE_IFREG) {
                 const void* buff;
                 size_t size;
                 la_int64_t offset;
+                // let libarchive handle buffer size + _read_data_block handles sparse files ;)
                 while (archive_read_data_block(a.get(), &buff, &size, &offset) == ARCHIVE_OK) {
                     archive_write_data_block(ext.get(), buff, size, offset);
                 }
             }
 
-            // Finish entry to keep libarchive state consistent
+            // flush buffers, write metadata, finalize internal structures,
+            // to keep libarchive state consistent
             archive_write_finish_entry(ext.get());
 
         } catch (const std::exception& e) {

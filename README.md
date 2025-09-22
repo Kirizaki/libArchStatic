@@ -137,9 +137,17 @@ python verify_unpack.py test_cases test_cases_unpacked
 
 ---
 
-## GitHub Actions
+## GitHub Actions Workflows
 
-TODO: Add proper workflows description with binary releases.
+This project uses **GitHub Actions** for continuous integration and continuous deployment (CI/CD).
+The workflows defined in [`.github/workflows`](.github/workflows) automatically:
+
+- Build/download all required static dependencies (zlib, bzip2, xz, zstd, OpenSSL, libarchive).
+- Compile `libArchStatic` on macOS (download already build libs with includes on Windows).
+- Run integration tests by packing/unpacking generated test directories and verifying results.
+- Upload compiled binaries as workflow artifacts for easy download.
+
+You can trigger the workflow manually from the **Actions** tab (`workflow_dispatch`) and download the latest builds directly from the workflow summary.
 
 ---
 
@@ -148,3 +156,10 @@ TODO: Add proper workflows description with binary releases.
 MIT License for libArchStatic
 
 ---
+
+## TODOs
+- Detect & prevent **symlink loops** during recursive walk
+- Allow configurable **chunk sizes** (currently fixed at 8KB/10KB)
+- Reuse `archive_entry` objects via `archive_entry_clear()`
+- More strict **encoding handling** (currently libarchive defaults)
+- Cleanup GitHub Actions workflows

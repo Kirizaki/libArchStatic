@@ -1,0 +1,141 @@
+name: Build libArchStatic (MacOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { icon: '🍎', sys: macos, runs-on: 'macos-latest' }
+    name: "🚧 ${{ matrix.icon }} ${{ matrix.sys }}"
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Install macOS build tools"
+        if: matrix.sys == 'macos'
+        run: |
+          brew update
+          brew install cmake ninja pkg-config autoconf automake libtool gettext po4a
+          export PATH="/usr/local/opt/libtool/bin:$PATH"
+          export PATH="/usr/local/opt/gettext/bin:$PATH"
+
+      - name: "Set parallel build variable"
+        if: matrix.sys == 'macos'
+        run: echo "NUM_CORES=$(sysctl -n hw.ncpu)" >> $GITHUB_ENV
+
+      - name: "Build static dependencies (macOS)"
+        if: matrix.sys == 'macos'
+        run: |
+          mkdir -p $HOME/deps
+
+          # zlib
+          git clone https://github.com/madler/zlib.git
+          cd zlib
+          mkdir build && cd build
+          cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=$HOME/deps/zlib
+          cmake --build . --target install -- -j$NUM_CORES
+          cd ../..
+
+          # bzip2
+          git clone https://sourceware.org/git/bzip2.git
+          cd bzip2
+          make -f Makefile-libbz2_so clean
+          make libbz2.a
+          mkdir -p $HOME/deps/bzip2/lib $HOME/deps/bzip2/include
+          cp libbz2.a $HOME/deps/bzip2/lib/
+          cp bzlib.h $HOME/deps/bzip2/include/
+          cd ..
+
+          # xz (liblzma)
+          git clone https://github.com/tukaani-project/xz.git
+          cd xz
+          ./autogen.sh --no-po4a    # skip man pages
+          ./configure --disable-shared --enable-static --prefix=$HOME/deps/xz
+          make -j$NUM_CORES && make install
+          cd ..
+
+          # zstd
+          git clone https://github.com/facebook/zstd.git
+          cd zstd/build/cmake
+          mkdir build && cd build
+          cmake .. -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_STATIC=ON -DCMAKE_INSTALL_PREFIX=$HOME/deps/zstd
+          cmake --build . --target install -- -j$NUM_CORES
+          cd ../../../..
+
+          # openssl
+          git clone https://github.com/openssl/openssl.git
+          cd openssl
+          ./Configure darwin64-x86_64-cc no-shared --prefix=$HOME/deps/openssl
+          make -j$NUM_CORES && make install_sw
+          cd ..
+
+          # libarchive (without libiconv)
+          git clone https://github.com/libarchive/libarchive.git
+          cd libarchive
+          mkdir -p build && cd build
+          cmake .. -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_ICONV=OFF -DCMAKE_INSTALL_PREFIX=$HOME/deps/libarchive
+          cmake --build . --target install -- -j$NUM_CORES
+          cd ../..
+
+      - name: "DEBUG PRINT OUT PATHS"
+        run: |
+          echo "=== libarchive ==="
+          find /Users/runner/deps/ | grep archive.h
+          find /Users/runner/deps/ | grep libarchive.a
+
+          echo "=== Full tree of libarchive deps ==="
+          ls -R /Users/runner/deps/ || true
+
+          echo "=== Other static libraries ==="
+          find /Users/runner/deps/ | grep zstd/include
+          find /Users/runner/deps/ | grep xz/include
+          find /Users/runner/deps/ | grep bzip2/include
+          find /Users/runner/deps/ | grep zlib/include
+          find /Users/runner/deps/ | grep openssl/include
+          find /Users/runner/deps/ | grep libzstd.a
+          find /Users/runner/deps/ | grep liblzma.
+          find /Users/runner/deps/ | grep libbz2.a
+          find /Users/runner/deps/ | grep libz.a
+          find /Users/runner/deps/ | grep libcrypto.a
+
+      - name: "Set ENV for macOS static deps"
+        if: matrix.sys == 'macos'
+        run: |
+          # headers/includes:
+          echo "LIBARCHIVE_H=$HOME/deps/libarchive/include" >> $GITHUB_ENV
+          echo "ZSTD_H=$HOME/deps/zstd/include" >> $GITHUB_ENV
+          echo "XZ_H=$HOME/deps/xz/include" >> $GITHUB_ENV
+          echo "BZIP2_H=$HOME/deps/bzip2/include" >> $GITHUB_ENV
+          echo "ZLIB_H=$HOME/deps/zlib/include" >> $GITHUB_ENV
+          echo "OPENSSL_H=$HOME/deps/openssl/include" >> $GITHUB_ENV
+
+          # libs:
+          echo "LIBARCHIVE_LIB=$HOME/deps/libarchive/lib/libarchive.a" >> $GITHUB_ENV
+          echo "ZSTD_LIB=$HOME/deps/zstd/lib/libzstd.a" >> $GITHUB_ENV
+          echo "XZ_LIB=$HOME/deps/xz/lib/liblzma.a" >> $GITHUB_ENV
+          echo "BZIP2_LIB=$HOME/deps/bzip2/lib/libbz2.a" >> $GITHUB_ENV
+          echo "ZLIB_LIB=$HOME/deps/zlib/lib/libz.a" >> $GITHUB_ENV
+          echo "OPENSSL_LIB=$HOME/deps/openssl/lib/libcrypto.a" >> $GITHUB_ENV
+
+      - name: "Build TOOL"
+        run: |
+          ./scripts/build.sh --clean --workflow
+
+      # - name: "Run tests"
+      #   run: |
+      #     python3 ./scripts/gen_test_dirs.py
+      #     ./build/libArchStatic pack test_cases tc.bin
+      #     ./build/libArchStatic unpack tc.bin test_cases_unpacked
+      #     python3 ./scripts/verify_unpack.py test_cases test_cases_unpacked
+
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "binaries-${{ matrix.sys }}"
+          path: |
+            ${{ matrix.sys == 'macos-latest' && './build/libArchStatic' || '' }}
