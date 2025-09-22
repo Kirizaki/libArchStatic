@@ -1,4 +1,4 @@
-name: [TEST] Manual MSYS2 Worklow
+name: Build libArchStatic (MSYS2)
 
 on:
   workflow_dispatch:
