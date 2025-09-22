@@ -20,7 +20,9 @@ jobs:
         if: matrix.sys == 'macos'
         run: |
           brew update
-          brew install cmake ninja pkg-config automake autoconf libtool
+          brew install cmake ninja pkg-config autoconf automake libtool gettext po4a
+          export PATH="/usr/local/opt/libtool/bin:$PATH"
+          export PATH="/usr/local/opt/gettext/bin:$PATH"
 
       - name: "Build static dependencies (macOS)"
         if: matrix.sys == 'macos'
@@ -48,7 +50,7 @@ jobs:
           # xz (liblzma)
           git clone https://github.com/tukaani-project/xz.git
           cd xz
-          ./autogen.sh
+          ./autogen.sh --no-po4a    # skip man pages
           ./configure --disable-shared --enable-static --prefix=$HOME/deps/xz
           make && make install
           cd ..
@@ -68,7 +70,7 @@ jobs:
           make && make install_sw
           cd ..
 
-          # libarchive
+          # libarchive (without libiconv)
           git clone https://github.com/libarchive/libarchive.git
           cd libarchive
           mkdir build && cd build
@@ -76,7 +78,7 @@ jobs:
           cmake --build . --target install
           cd ../..
 
-      - name: "Set ENV for static deps"
+      - name: "Set ENV for macOS static deps"
         if: matrix.sys == 'macos'
         run: |
           echo "LIBARCHIVE_ROOT=$HOME/deps/libarchive" >> $GITHUB_ENV
