@@ -34,13 +34,6 @@ jobs:
             xz
             zstd
             openssl-devel
-            # full names maybe...?
-            mingw-w64-x86_64-libarchive-static
-            mingw-w64-x86_64-zlib-static
-            mingw-w64-x86_64-bzip2-static
-            mingw-w64-x86_64-xz-static
-            mingw-w64-x86_64-zstd-static
-            mingw-w64-x86_64-openssl-static
           pacboy: |
             toolchain:p
             cmake:p
