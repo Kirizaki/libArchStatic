@@ -1,0 +1,41 @@
+name: Build libArchStatic (MacOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { icon: '🍎', sys: macos, runs-on: 'macos-latest' }
+    name: "🚧 ${{ matrix.icon }} ${{ matrix.sys }}"
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Setup Homebrew packages"
+        if: matrix.sys == 'macos'
+        run: |
+          brew update
+          brew install \
+            cmake \
+            ninja \
+            libarchive \
+            zlib \
+            bzip2 \
+            xz \
+            zstd \
+            openssl@3
+
+      - name: "Build TOOL"
+        run: |
+          ./scripts/build.sh --clean
+
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "binaries-${{ matrix.sys }}"
+          path: ./build/*

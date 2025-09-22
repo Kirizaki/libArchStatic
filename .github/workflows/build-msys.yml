@@ -10,17 +10,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { icon: '⬛', sys: mingw32, runs-on: 'windows-latest' }
           - { icon: '🟦', sys: mingw64, runs-on: 'windows-latest' }
     name: "🚧 ${{ matrix.icon }} ${{ matrix.sys }}"
-    defaults:
-      run:
-        shell: msys2 {0}
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
-      - name: "${{ matrix.icon }} Setup MSYS2"
+      - name: "Setup MSYS2"
+        if: matrix.sys == 'mingw64'
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.sys }}
@@ -43,8 +40,8 @@ jobs:
         run: |
           ./scripts/build.sh --clean
 
-      - name: "Upload executables"
+      - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
         with:
           name: "binaries-${{ matrix.sys }}"
-          path: ./build/*.exe
+          path: ./build/*
