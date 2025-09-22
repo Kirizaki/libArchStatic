@@ -92,6 +92,23 @@ jobs:
           echo "ZLIB_ROOT=$HOME/deps/zlib" >> $GITHUB_ENV
           echo "OPENSSL_ROOT=$HOME/deps/openssl" >> $GITHUB_ENV
 
+      - name: "DEBUG PRINT OUT PATHS"
+        run: |
+          echo "=== libarchive headers ==="
+          find $LIBARCHIVE_ROOT -name "archive.h"
+
+          echo "=== libarchive static libraries (.a) ==="
+          find $LIBARCHIVE_ROOT -name "*.a"
+
+          echo "=== All headers in libarchive ==="
+          find $LIBARCHIVE_ROOT -type f -name "*.h"
+
+          echo "=== Full tree of libarchive deps ==="
+          ls -R $LIBARCHIVE_ROOT || true
+
+          echo "=== Other static libraries ==="
+          find $ZSTD_ROOT $XZ_ROOT $BZIP2_ROOT $ZLIB_ROOT $OPENSSL_ROOT -name "*.a"
+
       - name: "Build TOOL"
         run: |
           ./scripts/build.sh --clean
