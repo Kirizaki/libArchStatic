@@ -77,7 +77,7 @@ jobs:
           # libarchive (without libiconv)
           git clone https://github.com/libarchive/libarchive.git
           cd libarchive
-          mkdir build && cd build
+          mkdir -p build && cd build
           cmake .. -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_ICONV=OFF -DCMAKE_INSTALL_PREFIX=$HOME/deps/libarchive
           cmake --build . --target install -- -j$NUM_CORES
           cd ../..
@@ -94,7 +94,17 @@ jobs:
 
       - name: "Build TOOL"
         run: |
-          ./scripts/build.sh --clean
+          mkdir -p build
+          cd build
+          cmake -B build \
+            -DLIBARCHIVE_ROOT=$HOME/deps/libarchive \
+            -DZSTD_ROOT=$HOME/deps/zstd \
+            -DXZ_ROOT=$HOME/deps/xz \
+            -DBZIP2_ROOT=$HOME/deps/bzip2 \
+            -DZLIB_ROOT=$HOME/deps/zlib \
+            -DOPENSSL_ROOT=$HOME/deps/openssl
+          cmake --build build --target install -- -j$NUM_CORES
+          # ./scripts/build.sh --clean
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
