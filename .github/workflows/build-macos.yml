@@ -16,19 +16,75 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
-      - name: "Setup Homebrew packages"
+      - name: "Install macOS build tools"
         if: matrix.sys == 'macos'
         run: |
           brew update
-          brew install \
-            cmake \
-            ninja \
-            libarchive \
-            zlib \
-            bzip2 \
-            xz \
-            zstd \
-            openssl@3
+          brew install cmake ninja pkg-config automake autoconf libtool
+
+      - name: "Build static dependencies (macOS)"
+        if: matrix.sys == 'macos'
+        run: |
+          mkdir -p $HOME/deps
+
+          # zlib
+          git clone https://github.com/madler/zlib.git
+          cd zlib
+          mkdir build && cd build
+          cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=$HOME/deps/zlib
+          cmake --build . --target install
+          cd ../..
+
+          # bzip2
+          git clone https://sourceware.org/git/bzip2.git
+          cd bzip2
+          make -f Makefile-libbz2_so clean
+          make libbz2.a
+          mkdir -p $HOME/deps/bzip2/lib $HOME/deps/bzip2/include
+          cp libbz2.a $HOME/deps/bzip2/lib/
+          cp bzlib.h $HOME/deps/bzip2/include/
+          cd ..
+
+          # xz (liblzma)
+          git clone https://github.com/tukaani-project/xz.git
+          cd xz
+          ./autogen.sh
+          ./configure --disable-shared --enable-static --prefix=$HOME/deps/xz
+          make && make install
+          cd ..
+
+          # zstd
+          git clone https://github.com/facebook/zstd.git
+          cd zstd/build/cmake
+          mkdir build && cd build
+          cmake .. -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_STATIC=ON -DCMAKE_INSTALL_PREFIX=$HOME/deps/zstd
+          cmake --build . --target install
+          cd ../../../..
+
+          # openssl
+          git clone https://github.com/openssl/openssl.git
+          cd openssl
+          ./Configure darwin64-x86_64-cc no-shared --prefix=$HOME/deps/openssl
+          make && make install_sw
+          cd ..
+
+          # libarchive
+          git clone https://github.com/libarchive/libarchive.git
+          cd libarchive
+          mkdir build && cd build
+          cmake .. -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_ICONV=OFF -DCMAKE_INSTALL_PREFIX=$HOME/deps/libarchive
+          cmake --build . --target install
+          cd ../..
+
+      - name: "Set ENV for static deps"
+        if: matrix.sys == 'macos'
+        run: |
+          echo "LIBARCHIVE_ROOT=$HOME/deps/libarchive" >> $GITHUB_ENV
+          echo "ZSTD_ROOT=$HOME/deps/zstd" >> $GITHUB_ENV
+          echo "XZ_ROOT=$HOME/deps/xz" >> $GITHUB_ENV
+          echo "BZIP2_ROOT=$HOME/deps/bzip2" >> $GITHUB_ENV
+          echo "ZLIB_ROOT=$HOME/deps/zlib" >> $GITHUB_ENV
+          echo "OPENSSL_ROOT=$HOME/deps/openssl" >> $GITHUB_ENV
 
       - name: "Build TOOL"
         run: |

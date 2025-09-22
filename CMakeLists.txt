@@ -31,29 +31,30 @@ if(WIN32)
         ${OPENSSL_LIB}
     )
 elseif(APPLE)
-    set(LIBARCHIVE_ROOT $ENV{LIBARCHIVE_ROOT} CACHE PATH "libarchive root path")
-    set(ZSTD_ROOT       $ENV{ZSTD_ROOT}       CACHE PATH "zstd root path")
-    set(XZ_ROOT         $ENV{XZ_ROOT}         CACHE PATH "xz root path")
-    set(BZIP2_ROOT      $ENV{BZIP2_ROOT}      CACHE PATH "bzip2 root path")
-    set(ZLIB_ROOT       $ENV{ZLIB_ROOT}       CACHE PATH "zlib root path")
-    set(OPENSSL_ROOT    $ENV{OPENSSL_ROOT}    CACHE PATH "openssl root path")
+    find_package(PkgConfig REQUIRED)
 
-    target_include_directories(libArchStatic PRIVATE
-        ${LIBARCHIVE_ROOT}/libarchive
-        ${ZSTD_ROOT}/include
-        ${XZ_ROOT}/include
-        ${BZIP2_ROOT}/include
-        ${ZLIB_ROOT}/include
-        ${OPENSSL_ROOT}/include
-    )
+    pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
+    pkg_check_modules(ZSTD REQUIRED libzstd)
+    pkg_check_modules(XZ REQUIRED liblzma)
+    pkg_check_modules(BZIP2 REQUIRED bzip2)
+    pkg_check_modules(ZLIB REQUIRED zlib)
+    pkg_check_modules(OpenSSL REQUIRED openssl)
 
     target_link_libraries(libArchStatic PRIVATE
-        ${LIBARCHIVE_ROOT}/build/libarchive/libarchive.a
-        ${ZSTD_ROOT}/lib/libzstd.a
-        ${XZ_ROOT}/lib/liblzma.a
-        ${BZIP2_ROOT}/lib/libbz2.a
-        ${ZLIB_ROOT}/lib/libz.a
-        ${OPENSSL_ROOT}/lib/libcrypto.a
+        ${LIBARCHIVE_LIBRARIES}
+        ${ZSTD_LIBRARIES}
+        ${XZ_LIBRARIES}
+        ${BZIP2_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
+    target_include_directories(libArchStatic PRIVATE
+        ${LIBARCHIVE_INCLUDE_DIRS}
+        ${ZSTD_INCLUDE_DIRS}
+        ${XZ_INCLUDE_DIRS}
+        ${BZIP2_INCLUDE_DIRS}
+        ${ZLIB_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIRS}
     )
 
 elseif(UNIX)
