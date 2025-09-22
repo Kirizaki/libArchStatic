@@ -18,6 +18,11 @@ for arg in "$@"; do
             CLEAN_BUILD=true
             shift
             ;;
+        --workflow)
+            source .env_gh
+            CLEAN_BUILD=true
+            shift
+            ;;
         *)
             echo "Unknown argument: $arg"
             echo "Usage: ./build.sh [--clean] [--debug]"

@@ -124,7 +124,7 @@ jobs:
 
       - name: "Build TOOL"
         run: |
-          ./scripts/build.sh --clean
+          ./scripts/build.sh --clean --workflow
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
