@@ -131,9 +131,11 @@ jobs:
           python3 ./scripts/gen_test_dirs.py
           sleep 5
           ./build/libArchStatic pack test_cases tc.bin
-          sleep 10
+          sleep 15
+          ls -l
           ./build/libArchStatic unpack tc.bin test_cases_unpacked
-          sleep 10
+          sleep 15
+          ls -l
           python3 ./scripts/verify_unpack.py
 
       - name: "Upload artifacts"
