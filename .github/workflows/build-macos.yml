@@ -85,29 +85,21 @@ jobs:
       - name: "Set ENV for macOS static deps"
         if: matrix.sys == 'macos'
         run: |
-          echo "LIBARCHIVE_ROOT=$HOME/deps/libarchive" >> $GITHUB_ENV
-          echo "ZSTD_ROOT=$HOME/deps/zstd" >> $GITHUB_ENV
-          echo "XZ_ROOT=$HOME/deps/xz" >> $GITHUB_ENV
-          echo "BZIP2_ROOT=$HOME/deps/bzip2" >> $GITHUB_ENV
-          echo "ZLIB_ROOT=$HOME/deps/zlib" >> $GITHUB_ENV
-          echo "OPENSSL_ROOT=$HOME/deps/openssl" >> $GITHUB_ENV
+          # headers/includes:
+          echo "LIBARCHIVE_H=$HOME/deps/libarchive/include" >> $GITHUB_ENV
+          echo "ZSTD_H=$HOME/deps/zstd/include" >> $GITHUB_ENV
+          echo "XZ_H=$HOME/deps/xz/include" >> $GITHUB_ENV
+          echo "BZIP2_H=$HOME/deps/bzip2/include" >> $GITHUB_ENV
+          echo "ZLIB_H=$HOME/deps/zlib/include" >> $GITHUB_ENV
+          echo "OPENSSL_H=$HOME/deps/openssl/include" >> $GITHUB_ENV
 
-      - name: "DEBUG PRINT OUT PATHS"
-        run: |
-          echo "=== libarchive headers ==="
-          find $LIBARCHIVE_ROOT -name "archive.h"
-
-          echo "=== libarchive static libraries (.a) ==="
-          find $LIBARCHIVE_ROOT -name "*.a"
-
-          echo "=== All headers in libarchive ==="
-          find $LIBARCHIVE_ROOT -type f -name "*.h"
-
-          echo "=== Full tree of libarchive deps ==="
-          ls -R $LIBARCHIVE_ROOT || true
-
-          echo "=== Other static libraries ==="
-          find $ZSTD_ROOT $XZ_ROOT $BZIP2_ROOT $ZLIB_ROOT $OPENSSL_ROOT -name "*.a"
+          # libs:
+          echo "LIBARCHIVE_LIB=$HOME/deps/libarchive/lib/libarchive.a" >> $GITHUB_ENV
+          echo "ZSTD_LIB=$HOME/deps/zstd/lib/libzstd.a" >> $GITHUB_ENV
+          echo "XZ_LIB=$HOME/deps/xz/lib/liblzma.a" >> $GITHUB_ENV
+          echo "BZIP2_LIB=$HOME/deps/bzip2/lib/libbz2.a" >> $GITHUB_ENV
+          echo "ZLIB_LIB=$HOME/deps/zlib/lib/libz.a" >> $GITHUB_ENV
+          echo "OPENSSL_LIB=$HOME/deps/openssl/lib/libcrypto.a" >> $GITHUB_ENV
 
       - name: "Build TOOL"
         run: |
@@ -117,4 +109,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "binaries-${{ matrix.sys }}"
-          path: ./build/*
+          path: |
+            ${{ matrix.sys == 'windows-latest' && './build/*.exe' || '' }}
+            ${{ matrix.sys == 'macos-latest' && './build/libArchStatic' || '' }}

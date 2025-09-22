@@ -31,53 +31,37 @@ if(WIN32)
         ${OPENSSL_LIB}
     )
 elseif(APPLE)
-    # GREEN BUILD!
-    # TODO: Replace .env vars to sync them with those in GH actions runner:
-    # local:
-    #   include:    /Users/greg/repo/libarchive/libarchive
-    #   lib:        /Users/greg/repo/libarchive/lib/libarchive.a
-    # runne:
-    #   include:    /Users/runner/deps/libarchive/include
-    #   lib:        /Users/runner/deps/libarchive/lib/libarchive.a
-    set(LIBARCHIVE_ROOT $ENV{LIBARCHIVE_ROOT} CACHE PATH "libarchive root path")
-    set(ZSTD_ROOT       $ENV{ZSTD_ROOT}       CACHE PATH "zstd root path")
-    set(XZ_ROOT         $ENV{XZ_ROOT}         CACHE PATH "xz root path")
-    set(BZIP2_ROOT      $ENV{BZIP2_ROOT}      CACHE PATH "bzip2 root path")
-    set(ZLIB_ROOT       $ENV{ZLIB_ROOT}       CACHE PATH "zlib root path")
-    set(OPENSSL_ROOT    $ENV{OPENSSL_ROOT}    CACHE PATH "openssl root path")
+    # headers/includes:
+    set(LIBARCHIVE_H $ENV{LIBARCHIVE_H} CACHE PATH "libarchive headers path")
+    set(ZSTD_H       $ENV{ZSTD_H}       CACHE PATH "zstd headers path")
+    set(XZ_H         $ENV{XZ_H}         CACHE PATH "xz headers path")
+    set(BZIP2_H      $ENV{BZIP2_H}      CACHE PATH "bzip2 headers path")
+    set(ZLIB_H       $ENV{ZLIB_H}       CACHE PATH "zlib headers path")
+    set(OPENSSL_H    $ENV{OPENSSL_H}    CACHE PATH "openssl headers path")
+    # libs:
+    set(LIBARCHIVE_LIB $ENV{LIBARCHIVE_LIB} CACHE PATH "libarchive lib path")
+    set(ZSTD_LIB       $ENV{ZSTD_LIB}       CACHE PATH "zstd lib path")
+    set(XZ_LIB         $ENV{XZ_LIB}         CACHE PATH "xz lib path")
+    set(BZIP2_LIB      $ENV{BZIP2_LIB}      CACHE PATH "bzip2 lib path")
+    set(ZLIB_LIB       $ENV{ZLIB_LIB}       CACHE PATH "zlib lib path")
+    set(OPENSSL_LIB    $ENV{OPENSSL_LIB}    CACHE PATH "openssl lib path")
+
     target_include_directories(libArchStatic PRIVATE
-        ${LIBARCHIVE_ROOT}/libarchive
-        ${ZSTD_ROOT}/include
-        ${XZ_ROOT}/include
-        ${BZIP2_ROOT}/include
-        ${ZLIB_ROOT}/include
-        ${OPENSSL_ROOT}/include
-        # DEBUG PURPOSES:
-        /Users/runner/deps/libarchive/include
-        /Users/runner/deps/zstd/include
-        /Users/runner/deps/xz/include
-        /Users/runner/deps/bzip2/include
-        /Users/runner/deps/zlib/include
-        /Users/runner/deps/openssl/include
-        /Users/runner/deps/openssl/include
+        ${LIBARCHIVE_H}
+        ${ZSTD_H}
+        ${XZ_H}
+        ${BZIP2_H}
+        ${ZLIB_H}
+        ${OPENSSL_H}
     )
 
     target_link_libraries(libArchStatic PRIVATE
-        # ${LIBARCHIVE_ROOT}/build/libarchive/libarchive.a
-        # ${ZSTD_ROOT}/lib/libzstd.a
-        # ${XZ_ROOT}/lib/liblzma.a
-        # ${BZIP2_ROOT}/lib/libbz2.a
-        # ${ZLIB_ROOT}/lib/libz.a
-        # ${OPENSSL_ROOT}/lib/libcrypto.a
-        # ${OPENSSL_ROOT}/lib/libssl.a
-        # DEBUG PURPOSES:
-        /Users/runner/deps/libarchive/lib/libarchive.a
-        /Users/runner/deps/zstd/lib/libzstd.a
-        /Users/runner/deps/xz/lib/liblzma.a
-        /Users/runner/deps/bzip2/lib/libbz2.a
-        /Users/runner/deps/zlib/lib/libz.a
-        /Users/runner/deps/openssl/lib/libcrypto.a
-        /Users/runner/deps/openssl/lib/libssl.a
+        ${LIBARCHIVE_LIB}
+        ${ZSTD_LIB}
+        ${XZ_LIB}
+        ${BZIP2_LIB}
+        ${ZLIB_LIB}
+        ${OPENSSL_LIB}
     )
 
 elseif(UNIX)
