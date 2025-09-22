@@ -28,12 +28,12 @@ jobs:
           install: |
             git
             make
-            libarchive-static
-            zlib-static
-            bzip2-static
-            xz-static
-            zstd-static
-            openssl-static
+            libarchive-devel
+            zlib-devel
+            bzip2-devel
+            xz-devel
+            zstd-devel
+            openssl-devel
           pacboy: |
             toolchain:p
             cmake:p
@@ -42,3 +42,9 @@ jobs:
       - name: "Build TOOL"
         run: |
           ./scripts/build.sh --clean
+
+      - name: "Upload executables"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "binaries-${{ matrix.sys }}"
+          path: ./build/*.exe
