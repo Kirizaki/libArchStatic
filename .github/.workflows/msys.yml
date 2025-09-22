@@ -1,0 +1,45 @@
+name: [TEST] Manual MSYS2 Worklow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { icon: '⬛', sys: mingw32, runs-on: 'windows-latest' }
+          - { icon: '🟦', sys: mingw64, runs-on: 'windows-latest' }
+    name: 🚧${{ matrix.icon }} ${{ matrix.sys }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+
+      - name: 'Checkout code'
+        uses: actions/checkout@v4
+
+      - name: '${{ matrix.icon }} Setup MSYS2'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{matrix.sys}}
+          update: true
+          install: >-
+            git
+            make
+            libarchive-static
+            zlib-static
+            bzip2-static
+            xz-static
+            zstd-static
+            openssl-static
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
+
+      - name: 'Built TOOL'
+        run: |
+          ./scripts/build.sh --clean
