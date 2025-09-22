@@ -32,7 +32,7 @@ DEFAULT_RANDOM_SEED = 1337
 # Sizes in bytes
 SMALL_TEXT_SIZE = 256
 SMALL_BINARY_SIZE = 512
-LARGE_FILE_SIZE = 10 * 1024 * 1024 * 250    # 250 MB default for large-file simulation (use sparse to avoid disk use)
+LARGE_FILE_SIZE = 10 * 1024 * 1024 * 1      # replace 1 with ie: 250 to get ~2.3 GB
 SPARSE_LARGE_FILE = True                    # if True, create sparse large file (low actual disk usage when filesystem supports it)
 
 # Stress / scaling
@@ -210,9 +210,9 @@ def create_case_large_file(root, size=LARGE_FILE_SIZE, sparse=SPARSE_LARGE_FILE)
             create_sparse_file(path, size)
         except Exception as e:
             print(f"[large_file] Sparse file failed, falling back to writing: {e}")
-            write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 250))
+            write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 1))
     else:
-        write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 250))
+        write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 1))
 
 def create_case_dup_across_many_dirs(root):
     """
