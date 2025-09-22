@@ -131,7 +131,7 @@ jobs:
           python3 ./scripts/gen_test_dirs.py
           ./build/libArchStatic pack test_cases tc.bin
           ./build/libArchStatic unpack tc.bin test_cases_unpacked
-          python3 ./scripts/verify_unpack.py test_cases test_cases_unpacked
+          sudo python3 ./scripts/verify_unpack.py test_cases test_cases_unpacked
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4

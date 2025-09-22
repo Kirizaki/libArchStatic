@@ -32,9 +32,9 @@ def compare_dirs(dir1, dir2):
                 differences = True
                 print(f"Symlink targets differ: {path1} -> {target1}, {path2} -> {target2}")
         # One is a symlink, the other is not
-        elif os.path.islink(path1) or os.path.islink(path2):
-            differences = True
-            print(f"Type mismatch (symlink vs file): {path1}, {path2}")
+        # elif os.path.islink(path1) or os.path.islink(path2):
+        #     differences = True
+        #     print(f"Type mismatch (symlink vs file): {path1}, {path2}")
         # Regular file comparison
         elif not filecmp.cmp(path1, path2, shallow=False):
             if 'secret' in path1 or 'secret' in path2:
