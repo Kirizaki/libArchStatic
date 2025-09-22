@@ -82,6 +82,23 @@ jobs:
           cmake --build . --target install -- -j$NUM_CORES
           cd ../..
 
+      - name: "DEBUG PRINT OUT PATHS"
+        run: |
+          echo "=== libarchive headers ==="
+          find $LIBARCHIVE_ROOT -name "archive.h"
+
+          echo "=== libarchive static libraries (.a) ==="
+          find $LIBARCHIVE_ROOT -name "*.a"
+
+          echo "=== All headers in libarchive ==="
+          find $LIBARCHIVE_ROOT -type f -name "*.h"
+
+          echo "=== Full tree of libarchive deps ==="
+          ls -R $LIBARCHIVE_ROOT || true
+
+          echo "=== Other static libraries ==="
+          find $ZSTD_ROOT $XZ_ROOT $BZIP2_ROOT $ZLIB_ROOT $OPENSSL_ROOT -name "*.a"
+
       - name: "Set ENV for macOS static deps"
         if: matrix.sys == 'macos'
         run: |
@@ -105,12 +122,6 @@ jobs:
         run: |
           ./scripts/build.sh --clean
 
-      - name: "Upload artifacts"
-        uses: actions/upload-artifact@v4
-        with:
-          name: "binaries-${{ matrix.sys }}"
-          path: ./build/libArchStatic
-
       - name: "Run tests"
         run: |
           python3 ./scripts/gen_test_dirs.py
@@ -122,4 +133,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "binaries-${{ matrix.sys }}"
-          path: ./build/libArchStatic
+          path: |
+            ${{ matrix.sys == 'macos-latest' && './build/libArchStatic' || '' }}
