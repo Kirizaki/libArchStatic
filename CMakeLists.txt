@@ -44,16 +44,32 @@ elseif(APPLE)
         ${BZIP2_ROOT}/include
         ${ZLIB_ROOT}/include
         ${OPENSSL_ROOT}/include
+        # DEBUG PURPOSES:
+        /Users/runner/deps/libarchive/include
+        /Users/runner/deps/zstd/include
+        /Users/runner/deps/xz/include
+        /Users/runner/deps/bzip2/include
+        /Users/runner/deps/zlib/include
+        /Users/runner/deps/openssl/include
+        /Users/runner/deps/openssl/include
     )
 
     target_link_libraries(libArchStatic PRIVATE
-        ${LIBARCHIVE_ROOT}/build/libarchive/libarchive.a
-        ${ZSTD_ROOT}/lib/libzstd.a
-        ${XZ_ROOT}/lib/liblzma.a
-        ${BZIP2_ROOT}/lib/libbz2.a
-        ${ZLIB_ROOT}/lib/libz.a
-        ${OPENSSL_ROOT}/lib/libcrypto.a
-        ${OPENSSL_ROOT}/lib/libssl.a
+        # ${LIBARCHIVE_ROOT}/build/libarchive/libarchive.a
+        # ${ZSTD_ROOT}/lib/libzstd.a
+        # ${XZ_ROOT}/lib/liblzma.a
+        # ${BZIP2_ROOT}/lib/libbz2.a
+        # ${ZLIB_ROOT}/lib/libz.a
+        # ${OPENSSL_ROOT}/lib/libcrypto.a
+        # ${OPENSSL_ROOT}/lib/libssl.a
+        # DEBUG PURPOSES:
+        /Users/runner/deps/libarchive/lib/libarchive.a
+        /Users/runner/deps/zstd/lib/libzstd.a
+        /Users/runner/deps/xz/lib/liblzma.a
+        /Users/runner/deps/bzip2/lib/libbz2.a
+        /Users/runner/deps/zlib/lib/libz.a
+        /Users/runner/deps/openssl/lib/libcrypto.a
+        /Users/runner/deps/openssl/lib/libssl.a
     )
 
 elseif(UNIX)
