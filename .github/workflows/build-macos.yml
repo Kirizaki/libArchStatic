@@ -133,9 +133,8 @@ jobs:
       #     ./build/libArchStatic unpack tc.bin test_cases_unpacked
       #     python3 ./scripts/verify_unpack.py test_cases test_cases_unpacked
 
-      - name: "Upload artifacts"
+      - name: "Upload executable"
         uses: actions/upload-artifact@v4
         with:
           name: "binaries-${{ matrix.sys }}"
-          path: |
-            ${{ matrix.sys == 'macos-latest' && './build/libArchStatic' || '' }}
+          path: ./build/*
