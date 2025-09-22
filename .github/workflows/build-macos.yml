@@ -84,20 +84,24 @@ jobs:
 
       - name: "DEBUG PRINT OUT PATHS"
         run: |
-          echo "=== libarchive headers ==="
-          find $LIBARCHIVE_ROOT -name "archive.h"
-
-          echo "=== libarchive static libraries (.a) ==="
-          find $LIBARCHIVE_ROOT -name "*.a"
-
-          echo "=== All headers in libarchive ==="
-          find $LIBARCHIVE_ROOT -type f -name "*.h"
+          echo "=== libarchive ==="
+          find /Users/runner/deps/ | grep archive.h
+          find /Users/runner/deps/ | grep libarchive.a
 
           echo "=== Full tree of libarchive deps ==="
-          ls -R $LIBARCHIVE_ROOT || true
+          ls -R /Users/runner/deps/ || true
 
           echo "=== Other static libraries ==="
-          find $ZSTD_ROOT $XZ_ROOT $BZIP2_ROOT $ZLIB_ROOT $OPENSSL_ROOT -name "*.a"
+          find /Users/runner/deps/ | grep zstd/include
+          find /Users/runner/deps/ | grep xz/include
+          find /Users/runner/deps/ | grep bzip2/include
+          find /Users/runner/deps/ | grep zlib/include
+          find /Users/runner/deps/ | grep openssl/include
+          find /Users/runner/deps/ | grep libzstd.a
+          find /Users/runner/deps/ | grep liblzma.
+          find /Users/runner/deps/ | grep libbz2.a
+          find /Users/runner/deps/ | grep libz.a
+          find /Users/runner/deps/ | grep libcrypto.a
 
       - name: "Set ENV for macOS static deps"
         if: matrix.sys == 'macos'
