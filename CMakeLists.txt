@@ -31,6 +31,14 @@ if(WIN32)
         ${OPENSSL_LIB}
     )
 elseif(APPLE)
+    # GREEN BUILD!
+    # TODO: Replace .env vars to sync them with those in GH actions runner:
+    # local:
+    #   include:    /Users/greg/repo/libarchive/libarchive
+    #   lib:        /Users/greg/repo/libarchive/lib/libarchive.a
+    # runne:
+    #   include:    /Users/runner/deps/libarchive/include
+    #   lib:        /Users/runner/deps/libarchive/lib/libarchive.a
     set(LIBARCHIVE_ROOT $ENV{LIBARCHIVE_ROOT} CACHE PATH "libarchive root path")
     set(ZSTD_ROOT       $ENV{ZSTD_ROOT}       CACHE PATH "zstd root path")
     set(XZ_ROOT         $ENV{XZ_ROOT}         CACHE PATH "xz root path")
