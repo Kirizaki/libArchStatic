@@ -6,18 +6,16 @@ import os
 def compare_dirs(dir1, dir2):
     """Recursively compare two directories. Returns True if identical."""
     cmp = filecmp.dircmp(dir1, dir2)
+
     differences = False
 
     # Check for files only in one directory
     if cmp.left_only or cmp.right_only:
-        if 'case_symlinks' in dir1 and 'case_symlinks' in dir2:
-            print("WARNING: waver for symlinks..")
-        else:
-            differences = True
-            if cmp.left_only:
-                print("Only in", dir1, ":", cmp.left_only)
-            if cmp.right_only:
-                print("Only in", dir2, ":", cmp.right_only)
+        differences = True
+        if cmp.left_only:
+            print("Only in", dir1, ":", cmp.left_only)
+        if cmp.right_only:
+            print("Only in", dir2, ":", cmp.right_only)
 
     # Compare common files
     for file_name in cmp.common_files:
@@ -32,14 +30,11 @@ def compare_dirs(dir1, dir2):
                 differences = True
                 print(f"Symlink targets differ: {path1} -> {target1}, {path2} -> {target2}")
         # One is a symlink, the other is not
-        # elif os.path.islink(path1) or os.path.islink(path2):
-        #     differences = True
-        #     print(f"Type mismatch (symlink vs file): {path1}, {path2}")
+        elif os.path.islink(path1) or os.path.islink(path2):
+            differences = True
+            print(f"Type mismatch (symlink vs file): {path1}, {path2}")
         # Regular file comparison
         elif not filecmp.cmp(path1, path2, shallow=False):
-            if 'secret' in path1 or 'secret' in path2:
-                print("WARNING: waver for permissions..")
-                continue
             differences = True
             print("Differing file:", path1, "<->", path2)
 

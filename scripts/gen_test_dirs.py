@@ -32,7 +32,7 @@ DEFAULT_RANDOM_SEED = 1337
 # Sizes in bytes
 SMALL_TEXT_SIZE = 256
 SMALL_BINARY_SIZE = 512
-LARGE_FILE_SIZE = 10 * 1024 * 1024 * 1      # replace 1 with ie: 250 to get ~2.3 GB
+LARGE_FILE_SIZE = 10 * 1024 * 1024 * 250    # 2.5~GB default for large-file simulation (use sparse to avoid disk use)
 SPARSE_LARGE_FILE = True                    # if True, create sparse large file (low actual disk usage when filesystem supports it)
 
 # Stress / scaling
@@ -168,6 +168,12 @@ def create_case_special_names(root):
             write_text_file(path, "special: " + name + "\n" + PLACEHOLDER_TEXT)
         except OSError as e:
             print(f"[special_names] Skipping invalid name {repr(name)}: {e}")
+    # very long file name (but keep within typical FS limits)
+    long_name = "a" * 200 + ".txt"
+    try:
+        write_text_file(os.path.join(root, "special", long_name), "long name")
+    except OSError as e:
+        print(f"[special_names] Skipping long name creation: {e}")
 
 def create_case_symlinks(root):
     """Create valid symlinks (if allowed) and a broken symlink."""
@@ -210,9 +216,9 @@ def create_case_large_file(root, size=LARGE_FILE_SIZE, sparse=SPARSE_LARGE_FILE)
             create_sparse_file(path, size)
         except Exception as e:
             print(f"[large_file] Sparse file failed, falling back to writing: {e}")
-            write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 1))
+            write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 250))
     else:
-        write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 1))
+        write_random_binary_of_size(path, min(size, 10 * 1024 * 1024 * 250))
 
 def create_case_dup_across_many_dirs(root):
     """
@@ -333,10 +339,10 @@ def main():
     write_manifest_for_case(c)
     cases.append(c)
 
-    # c = os.path.join(BASE_DIR, "case_long_paths")
-    # create_case_long_paths(c)
-    # write_manifest_for_case(c)
-    # cases.append(c)
+    c = os.path.join(BASE_DIR, "case_long_paths")
+    create_case_long_paths(c)
+    write_manifest_for_case(c)
+    cases.append(c)
 
     print("\nCreated cases:")
     for p in cases:
