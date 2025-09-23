@@ -125,8 +125,6 @@ jobs:
       - name: "Build TOOL"
         run: |
           ./scripts/build.sh --clean --workflow
-          ls -l
-          ls -l ./build/
 
       # - name: "Run tests"
       #   run: |
@@ -139,4 +137,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "binaries-${{ matrix.sys }}"
-          path: ./build/*
+          path: ./build/libArchStatic
